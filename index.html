@@ -3,11 +3,6 @@
 <head>
 <meta charset="UTF-8">
 <title>Rekap Tunggakan & Invoice ULP Tulung</title>
-<meta name="viewport" content="wi<!DOCTYPE html>
-<html lang="id">
-<head>
-<meta charset="UTF-8">
-<title>Rekap Tunggakan & Invoice ULP Tulung</title>
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
@@ -122,49 +117,77 @@ tr.clickable:hover td { filter: brightness(0.95); }
   <div id="view"></div>
 </div>
 
-<!-- ================= MODAL CETAK MASSAL INVOICE F4 (4 PER LEMBAR) ================= -->
+<!-- ================= MODAL CETAK MASSAL / SUSULAN INVOICE F4 ================= -->
 <div class="modal fade" id="cetakF4Modal" tabindex="-1">
   <div class="modal-dialog">
     <div class="modal-content">
       <div class="modal-header bg-success text-white py-2">
-        <h6 class="modal-title fw-bold">🖨️️ Cetak Invoice Kertas F4 (1 Lembar = 4 Invoice)</h6>
+        <h6 class="modal-title fw-bold">🖨️ Cetak Invoice Kertas F4 (1 Lembar = 4 Invoice)</h6>
         <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
       </div>
       <div class="modal-body small">
-        
-        <!-- PILIH PETUGAS YANG AKAN DICETAK -->
-        <div class="mb-2">
-          <label class="form-label fw-bold mb-1">1. Pilih Petugas yang Akan Dicetak:</label>
-          <div class="d-flex gap-2 align-items-center">
-            <select id="selectPetugasCetakF4" class="form-select form-select-sm fw-bold text-primary" onchange="gantiPetugasDiModalCetak()">
-              <option value="Semua">Semua Petugas</option>
-            </select>
-            <span class="badge bg-danger text-nowrap py-2 px-2" id="badgeJmlCetak">0 Plg (0 Lbr F4)</span>
+
+        <!-- PILIH MODE CETAK: PER PETUGAS ATAU KHUSUS BEBERAPA IDPEL SUSULAN -->
+        <div class="mb-3">
+          <label class="form-label fw-bold mb-1">Pilih Mode Cetak:</label>
+          <div class="btn-group w-100" role="group">
+            <input type="radio" class="btn-check" name="radioModeCetak" id="modeCetakPetugas" value="petugas" checked onchange="ubahModeCetakF4()">
+            <label class="btn btn-outline-primary btn-sm fw-bold" for="modeCetakPetugas">👥 Per Petugas (Semua)</label>
+
+            <input type="radio" class="btn-check" name="radioModeCetak" id="modeCetakIdpel" value="idpel" onchange="ubahModeCetakF4()">
+            <label class="btn btn-outline-primary btn-sm fw-bold" for="modeCetakIdpel">🎯 Khusus 1 / Beberapa IDPEL</label>
           </div>
         </div>
 
-        <!-- PILIHAN SUMBER DATA INVOICE & TGL BERANGKAT -->
-        <div id="boxOpsiSumberInvoice" class="p-2 border border-primary rounded bg-light mb-3">
+        <!-- AREA MODE 1: CETAK PER PETUGAS -->
+        <div id="areaModePetugas">
           <div class="mb-2">
-            <label class="form-label fw-bold text-primary mb-1">2. Pilihan Data Invoice yang Dicetak:</label>
-            <select id="selectSumberInvoiceCetak" class="form-select form-select-sm fw-semibold" onchange="terapkanPerubahanOpsiDariModalCetak()">
-              <option value="invoice_saja">Hanya Berdasarkan Invoice Bulan Lalu (+ Nunggak 2 & 3)</option>
-              <option value="tambah_nunggak">Invoice Bulan Lalu + Ditambah Pelanggan Nunggak L1 Bulan Lalu</option>
-            </select>
-          </div>
-          <div class="d-flex justify-content-between align-items-center">
-            <label class="fw-bold mb-0 text-dark">3. Sortir Tanggal Berangkat Petugas:</label>
-            <div class="d-flex align-items-center gap-1">
-              <span class="text-muted">Mulai Berangkat Tgl:</span>
-              <input type="number" id="inputTglBerangkatCetak" class="form-control form-control-sm text-center fw-bold" style="width:65px;" min="1" max="31" value="15" onchange="terapkanPerubahanOpsiDariModalCetak()">
+            <label class="form-label fw-bold mb-1">1. Pilih Petugas yang Akan Dicetak:</label>
+            <div class="d-flex gap-2 align-items-center">
+              <select id="selectPetugasCetakF4" class="form-select form-select-sm fw-bold text-primary" onchange="gantiPetugasDiModalCetak()">
+                <option value="Semua">Semua Petugas</option>
+              </select>
+              <span class="badge bg-danger text-nowrap py-2 px-2" id="badgeJmlCetak">0 Plg (0 Lbr F4)</span>
             </div>
           </div>
-          <div id="statusSortirCetak" class="mt-1 fw-bold text-center"></div>
+
+          <div id="boxOpsiSumberInvoice" class="p-2 border border-primary rounded bg-light mb-3">
+            <div class="mb-2">
+              <label class="form-label fw-bold text-primary mb-1">2. Pilihan Data Invoice yang Dicetak:</label>
+              <select id="selectSumberInvoiceCetak" class="form-select form-select-sm fw-semibold" onchange="terapkanPerubahanOpsiDariModalCetak()">
+                <option value="invoice_saja">Hanya Berdasarkan Invoice Bulan Lalu (+ Nunggak 2 & 3)</option>
+                <option value="tambah_nunggak">Invoice Bulan Lalu + Ditambah Pelanggan Nunggak L1 Bulan Lalu</option>
+              </select>
+            </div>
+            <div class="d-flex justify-content-between align-items-center">
+              <label class="fw-bold mb-0 text-dark">3. Sortir Tanggal Berangkat Petugas:</label>
+              <div class="d-flex align-items-center gap-1">
+                <span class="text-muted">Mulai Berangkat Tgl:</span>
+                <input type="number" id="inputTglBerangkatCetak" class="form-control form-control-sm text-center fw-bold" style="width:65px;" min="1" max="31" value="15" onchange="terapkanPerubahanOpsiDariModalCetak()">
+              </div>
+            </div>
+            <div id="statusSortirCetak" class="mt-1 fw-bold text-center"></div>
+          </div>
+        </div>
+
+        <!-- AREA MODE 2: CETAK KHUSUS 1 ATAU BEBERAPA IDPEL SUSULAN -->
+        <div id="areaModeIdpelKhusus" class="p-2 border border-primary rounded bg-light mb-3 d-none">
+          <label class="form-label fw-bold text-primary mb-1">Ketik / Paste 1 atau Beberapa IDPEL Tambahan:</label>
+          <textarea id="textIdpelCetakKhusus" class="form-control form-control-sm mb-2" rows="3" placeholder="Ketik atau Paste nomor IDPEL yang kelewatan / diminta petugas di sini (bisa 1 atau beberapa IDPEL)..."></textarea>
+          <div class="form-check">
+            <input class="form-check-input" type="checkbox" id="chkMasukkanKeTabInvoice" checked>
+            <label class="form-check-label fw-semibold text-dark" for="chkMasukkanKeTabInvoice">
+              Sekalian masukkan IDPEL ini ke dalam rekap Tab Invoice
+            </label>
+          </div>
+          <div class="text-muted mt-1" style="font-size:0.72rem;">
+            *Sistem otomatis mencari data pelanggan ini dari seluruh data awal bulan di Supabase.
+          </div>
         </div>
 
         <!-- PILIHAN BIAYA ADMIN (SELALU TAMPIL JELAS) -->
         <div class="p-2 border border-success rounded bg-white mb-3">
-          <label class="form-label fw-bold text-success mb-1">4. Pengaturan Biaya Admin Tagihan:</label>
+          <label class="form-label fw-bold text-success mb-1">Pengaturan Biaya Admin Tagihan:</label>
           <select id="selectOpsiAdmin" class="form-select form-select-sm fw-bold mb-2" onchange="toggleInputAdminCetak()">
             <option value="tanpa">Tanpa Biaya Admin — Ada tulisan "(belum termasuk biaya admin)"</option>
             <option value="pakai">Pakai Biaya Admin — Tagihan ditambah Admin & Tanpa tulisan</option>
@@ -193,7 +216,7 @@ tr.clickable:hover td { filter: brightness(0.95); }
         <!-- PILIHAN URUTAN & TANGGAL SURAT -->
         <div class="row g-2 mb-3">
           <div class="col-6">
-            <label class="form-label fw-bold mb-1">5. Urutkan Kertas:</label>
+            <label class="form-label fw-bold mb-1">Urutkan Kertas:</label>
             <select id="selectUrutanCetak" class="form-select form-select-sm">
               <option value="koked">Koked (Rute Baca)</option>
               <option value="idpel">IDPEL</option>
@@ -201,7 +224,7 @@ tr.clickable:hover td { filter: brightness(0.95); }
             </select>
           </div>
           <div class="col-6">
-            <label class="form-label fw-bold mb-1">6. Tanggal Surat Cetak:</label>
+            <label class="form-label fw-bold mb-1">Tanggal Surat Cetak:</label>
             <input type="text" id="inputTglSuratCetak" class="form-control form-control-sm">
           </div>
         </div>
@@ -362,7 +385,6 @@ let allData = [], currentDetail = [], currentTitle = "", currentPetugas = "Semua
 let historyStack = [], sortState = { key: null, asc: true };
 let daftarMasterPetugas = [];
 
-// Penyimpan Biaya Admin per Petugas (tersimpan otomatis di browser)
 function getBiayaAdminPetugas(kode) {
   if (!kode || kode === "Semua") return 0;
   const val = localStorage.getItem("admin_rp_" + kode.toLowerCase());
@@ -480,7 +502,6 @@ async function loadSheet(k) {
   if (tabEl) tabEl.classList.add("active");
   backBtn.classList.add("d-none");
 
-  // Munculkan tombol Cetak F4 di atas layar jika sedang di tab Invoice
   const btnCetakUtama = document.getElementById("btnCetakF4Utama");
   if (k === 'invoice') btnCetakUtama.classList.remove("d-none");
   else btnCetakUtama.classList.add("d-none");
@@ -1089,8 +1110,22 @@ async function prosesHapusInvoiceManual() {
 }
 
 // ============================================================================
-// 5. FITUR CETAK MASSAL INVOICE F4 (1 LEMBAR F4 = 4 INVOICE) & BIAYA ADMIN
+// 5. FITUR CETAK MASSAL & SUSULAN INVOICE F4 (4 INVOICE/LEMBAR) & BIAYA ADMIN
 // ============================================================================
+function ubahModeCetakF4() {
+  const mode = document.querySelector('input[name="radioModeCetak"]:checked').value;
+  const areaPetugas = document.getElementById("areaModePetugas");
+  const areaIdpel = document.getElementById("areaModeIdpelKhusus");
+
+  if (mode === "idpel") {
+    areaPetugas.classList.add("d-none");
+    areaIdpel.classList.remove("d-none");
+  } else {
+    areaPetugas.classList.remove("d-none");
+    areaIdpel.classList.add("d-none");
+  }
+}
+
 function bukaModalCetakF4DariAdmin() {
   const adminModalEl = document.getElementById('adminModal');
   const modalInstance = bootstrap.Modal.getInstance(adminModalEl);
@@ -1100,12 +1135,13 @@ function bukaModalCetakF4DariAdmin() {
 
 async function bukaModalCetakF4(kodePetugas) {
   document.getElementById("statusSortirCetak").innerHTML = "";
+  document.getElementById("modeCetakPetugas").checked = true;
+  ubahModeCetakF4();
 
   const skrg = new Date();
   const namaBulan = ["Januari", "Februari", "Maret", "April", "Mei", "Juni", "Juli", "Agustus", "September", "Oktober", "November", "Desember"];
   document.getElementById("inputTglSuratCetak").value = `${skrg.getDate()} ${namaBulan[skrg.getMonth()]}${skrg.getFullYear()}`;
 
-  // Muat daftar petugas ke dropdown modal cetak
   if (daftarMasterPetugas.length === 0) {
     const { data } = await db.from('master_petugas').select('*').order('kode');
     if (data) daftarMasterPetugas = data.filter(p => p.kode !== 'BARU');
@@ -1119,7 +1155,6 @@ async function bukaModalCetakF4(kodePetugas) {
   selPetugas.innerHTML = optHtml;
   selPetugas.value = kodePetugas || "Semua";
 
-  // Pastikan data Invoice terbaru sudah dimuat
   if (currentSheet !== 'invoice') {
     allData = await ambilDataSheetDariSupabase('invoice');
   }
@@ -1249,18 +1284,68 @@ async function terapkanPerubahanOpsiDariModalCetak() {
   }
 }
 
-function eksekusiCetakF4() {
+async function eksekusiCetakF4() {
+  const mode = document.querySelector('input[name="radioModeCetak"]:checked').value;
   const kode = document.getElementById("selectPetugasCetakF4").value;
   const opsiAdmin = document.getElementById("selectOpsiAdmin").value;
   const biayaAdmin = opsiAdmin === "pakai" ? (parseFloat(document.getElementById("inputNominalAdmin").value) || 0) : 0;
   const pakaiAdmin = (opsiAdmin === "pakai" && biayaAdmin > 0);
   const urutan = document.getElementById("selectUrutanCetak").value;
   const tglSurat = document.getElementById("inputTglSuratCetak").value.trim();
+  const btnDownload = document.getElementById("btnDownloadPdfF4");
 
-  let listCetak = allData.filter(r => (kode === "Semua" ? true : r.kode === kode) && !getStatusLunas(r).isLunas);
-  if (listCetak.length === 0) {
-    alert("Belum ada pelanggan BELUM LUNAS di daftar Invoice untuk dicetak!");
-    return;
+  let listCetak = [];
+  let labelFile = kode;
+
+  if (mode === "idpel") {
+    const idpels = ekstrakDaftarIdpel(document.getElementById("textIdpelCetakKhusus").value);
+    if (idpels.length === 0) {
+      alert("Ketik atau Paste minimal 1 nomor IDPEL yang ingin dicetak!");
+      return;
+    }
+
+    btnDownload.disabled = true;
+    btnDownload.innerText = "⏳ Mengambil data IDPEL dari Supabase...";
+
+    try {
+      // Cari langsung dari seluruh tabel data_tunggakan (meskipun belum masuk tab Invoice)
+      const { data, error } = await db.from('data_tunggakan').select('*').in('idpel', idpels);
+      if (error) throw error;
+
+      if (!data || data.length === 0) {
+        alert("IDPEL tersebut tidak ditemukan di dalam database bulan ini!");
+        btnDownload.disabled = false;
+        btnDownload.innerText = "📥 Download PDF Siap Cetak (Ukuran F4 - 4 Invoice/Lembar)";
+        return;
+      }
+
+      listCetak = data;
+      labelFile = `Khusus_${listCetak.length}IDPEL`;
+
+      // Jika dicentang, sekalian masukkan ke dalam tab Invoice
+      const ikutMasukTab = document.getElementById("chkMasukkanKeTabInvoice").checked;
+      if (ikutMasukTab) {
+        await db.from('data_tunggakan').update({ is_invoice: true }).in('idpel', idpels);
+        if (currentSheet === 'invoice') {
+          allData = await ambilDataSheetDariSupabase('invoice');
+          renderPetugas();
+        }
+      }
+    } catch (err) {
+      alert("Gagal mengambil data IDPEL: " + err.message);
+      btnDownload.disabled = false;
+      btnDownload.innerText = "📥 Download PDF Siap Cetak (Ukuran F4 - 4 Invoice/Lembar)";
+      return;
+    } finally {
+      btnDownload.disabled = false;
+      btnDownload.innerText = "📥 Download PDF Siap Cetak (Ukuran F4 - 4 Invoice/Lembar)";
+    }
+  } else {
+    listCetak = allData.filter(r => (kode === "Semua" ? true : r.kode === kode) && !getStatusLunas(r).isLunas);
+    if (listCetak.length === 0) {
+      alert("Belum ada pelanggan BELUM LUNAS di daftar Invoice untuk dicetak!");
+      return;
+    }
   }
 
   listCetak.sort((a, b) => {
@@ -1286,7 +1371,7 @@ function eksekusiCetakF4() {
     gambarSatuSlotInvoiceF4(doc, r, yTop, slotHeight, pakaiAdmin, biayaAdmin, bulanTagihan, tglSurat);
   });
 
-  const namaFile = `Cetak_Invoice_F4_${kode}_${pakaiAdmin ? 'PlusAdmin' + biayaAdmin : 'TanpaAdmin'}.pdf`;
+  const namaFile = `Cetak_Invoice_F4_${labelFile}_${pakaiAdmin ? 'PlusAdmin' + biayaAdmin : 'TanpaAdmin'}.pdf`;
   doc.save(namaFile);
 }
 
