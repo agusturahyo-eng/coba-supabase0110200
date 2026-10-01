@@ -92,7 +92,7 @@ tr.clickable:hover td { filter: brightness(0.95); }
       <li class="nav-item"><a class="nav-link" id="tab-invoice" onclick="loadSheet('invoice')">Invoice</a></li>
     </ul>
     <button id="btnAdmin" class="btn btn-primary btn-sm fw-bold shadow-sm d-none" data-bs-toggle="modal" data-bs-target="#adminModal" onclick="muatDaftarPetugasModal()">
-      ⚙️ Kelola & Update Data
+      ⚙️️ Kelola & Update Data
     </button>
   </div>
 
@@ -131,7 +131,7 @@ tr.clickable:hover td { filter: brightness(0.95); }
           <!-- TAB 1: UPDATE PELUNASAN HARIAN -->
           <div class="tab-pane fade show active" id="pane-lunas">
             <div class="alert alert-info py-2 small">
-              <b>Opsi 1 (Paling Praktis):</b> Upload langsung file Excel <code>Pelunasan_Online_DAFTAR_TRANSAKSI...xlsx</code> dari PLN tanpa perlu diedit. Sistem otomatis membaca <b>IDPEL</b> dan <b>TglTransaksi</b> sekaligus!
+              <b>Opsi 1 (Paling Praktis):</b> Upload langsung file Excel <code>Pelunasan_Online_DAFTAR_TRANSAKSI...xlsx</code> dari PLN tanpa perlu diedit. Sistem otomatis membaca <b>IDPEL</b> dan <b>TglTransaksi</b> sekaligus (dan otomatis menyortir Invoice yang lunas sebelum tgl berangkat)!
             </div>
             <div class="mb-3 p-2 border rounded bg-light">
               <label class="form-label small fw-bold mb-1">📂 Pilih File Excel Pelunasan Online PLN (.xlsx / .xls):</label>
@@ -186,19 +186,41 @@ tr.clickable:hover td { filter: brightness(0.95); }
             </div>
           </div>
 
-          <!-- TAB 4: PENGATURAN INVOICE TGL 15 -->
+          <!-- TAB 4: PENGATURAN INVOICE TGL 15 & SORTIR TGL BERANGKAT -->
           <div class="tab-pane fade" id="pane-invoice">
-            <div class="alert alert-primary py-2 small">
-              <b>Pengaturan Cetak Invoice (Tgl 15):</b><br>
-              Centang petugas yang meminta <b>Invoice Bulan Lalu + Tambahan Tunggakan L1/L2/L3 Bulan Lalu</b>. Anda juga bisa menambahkan IDPEL Invoice secara manual di bawah.
+            <div class="alert alert-primary py-2 small mb-2">
+              <b>Aturan Cetak & Sortir Invoice Per Petugas:</b><br>
+              • Isi <b>Tgl Berangkat</b>: Data Invoice berdasar bulan lalu yang <b>sudah lunas sebelum tanggal tersebut</b> otomatis dihapus.<br>
+              • Data <b>Nunggak 2 & 3 Bulan Lalu</b> tetap dimasukkan semua ke Invoice (karena bulan lalu masuk di Tunggakan, bukan Invoice).<br>
+              • Centang saklar jika petugas juga meminta tambahan dari <b>Nunggak L1 Bulan Lalu</b>.
             </div>
+
             <div class="mb-3 border rounded p-2 bg-light" style="max-height: 220px; overflow-y: auto;">
               <div id="listPetugasInvoice" class="row g-2 small">Memuat daftar petugas...</div>
             </div>
-            <hr class="my-2">
-            <label class="form-label small fw-bold">Tambah / Masukkan Daftar IDPEL Invoice Manual (Copas):</label>
-            <textarea id="textIdpelInvoiceManual" class="form-control form-control-sm mb-2" rows="3" placeholder="Paste daftar IDPEL yang ingin dimasukkan ke tab Invoice..."></textarea>
-            <button class="btn btn-dark btn-sm fw-bold w-100" onclick="prosesTambahInvoiceManual()">➕ Tambahkan IDPEL ke Daftar Invoice</button>
+
+            <div class="row g-2">
+              <div class="col-md-6">
+                <label class="form-label small fw-bold text-primary mb-1">1. Copas IDPEL Invoice Bulan Lalu (Ikut Sortir Tgl):</label>
+                <textarea id="textIdpelInvoiceManual" class="form-control form-control-sm mb-1" rows="2" placeholder="Paste IDPEL dari sheet INVOICE bulan lalu..."></textarea>
+                <button class="btn btn-primary btn-sm fw-bold w-100" onclick="prosesTambahInvoiceManual()">➕ Simpan Invoice Bulan Lalu</button>
+              </div>
+              <div class="col-md-6">
+                <label class="form-label small fw-bold text-success mb-1">2. Copas Nunggak 2 & 3 Bulan Lalu (Masuk Semua):</label>
+                <textarea id="textIdpelTunggakanL23" class="form-control form-control-sm mb-1" rows="2" placeholder="Paste IDPEL Nunggak L2 & L3 bulan lalu..."></textarea>
+                <button class="btn btn-success btn-sm fw-bold w-100" onclick="prosesTambahTunggakanL23Manual()">➕ Simpan Nunggak 2 & 3 Lalu</button>
+              </div>
+              <div class="col-md-6">
+                <label class="form-label small fw-bold text-secondary mb-1">3. Copas Nunggak L1 Bulan Lalu (Sesuai Centang):</label>
+                <textarea id="textIdpelTunggakanLalu" class="form-control form-control-sm mb-1" rows="2" placeholder="Paste IDPEL Nunggak L1 bulan lalu..."></textarea>
+                <button class="btn btn-secondary btn-sm fw-bold w-100" onclick="prosesTambahTunggakanLaluManual()">➕ Simpan Nunggak L1 Lalu</button>
+              </div>
+              <div class="col-md-6">
+                <label class="form-label small fw-bold text-danger mb-1">4. Hapus Manual IDPEL dari Invoice:</label>
+                <textarea id="textIdpelHapusInvoice" class="form-control form-control-sm mb-1" rows="2" placeholder="Paste IDPEL yg ingin dihapus dari Invoice..."></textarea>
+                <button class="btn btn-danger btn-sm fw-bold w-100" onclick="prosesHapusInvoiceManual()">🗑️ Hapus dari Invoice</button>
+              </div>
+            </div>
           </div>
         </div>
 
@@ -222,7 +244,6 @@ const { jsPDF } = window.jspdf;
 let allData = [], currentDetail = [], currentTitle = "", currentPetugas = "Semua", currentSheet = "lembar1";
 let historyStack = [], sortState = { key: null, asc: true };
 
-// Logika Pintu Rahasia (Klik Judul 5 Kali)
 let hitungKlikJudul = 0;
 let timerKlikJudul = null;
 
@@ -638,7 +659,7 @@ async function prosesFilePelunasanPln() {
       totalTerupdate += (data || 0);
     }
 
-    statusEl.innerHTML = `<span class="text-success">✅ Selesai! Dari ${totalIdpelTerbaca} IDPEL di file (Tgl ${daftarTanggal[0]} s/d ${daftarTanggal[daftarTanggal.length - 1]}), sebanyak ${totalTerupdate} data tunggakan berhasil diupdate menjadi LUNAS!</span>`;
+    statusEl.innerHTML = `<span class="text-success">✅ Selesai! Dari ${totalIdpelTerbaca} IDPEL di file (Tgl ${daftarTanggal[0]} s/d ${daftarTanggal[daftarTanggal.length - 1]}), sebanyak ${totalTerupdate} data berhasil diupdate menjadi LUNAS!</span>`;
     fileEl.value = "";
     loadSheet(currentSheet);
 
@@ -773,7 +794,7 @@ async function prosesInputDataAwal() {
 }
 
 async function prosesGantiBulan() {
-  if (!confirm("Yakin ingin memulai Bulan Baru?\n\nSistem akan otomatis menyimpan memori pelanggan Invoice & Tunggakan bulan ini ke tabel pengingat, lalu mengosongkan tabel untuk diisi data bulan baru.")) return;
+  if (!confirm("Yakin ingin memulai Bulan Baru?\n\nSistem akan otomatis menyimpan memori pelanggan Invoice, Nunggak 2 & 3, serta Nunggak L1 bulan ini ke tabel pengingat, lalu mengosongkan tabel untuk diisi data bulan baru.")) return;
   const statusEl = document.getElementById("statusProsesModal");
   statusEl.innerHTML = `<span class="text-primary">⏳ Menyimpan memori Invoice & mereset tabel...</span>`;
   const { error } = await db.rpc('ganti_bulan_baru');
@@ -791,24 +812,39 @@ async function muatDaftarPetugasModal() {
 
   let html = "";
   data.filter(p => p.kode !== 'BARU').forEach(p => {
+    const tglBerangkat = p.tgl_berangkat_invoice || 15;
     html += `
       <div class="col-md-6">
-        <div class="form-check form-switch bg-white p-2 border rounded">
-          <input class="form-check-input ms-0 me-2" type="checkbox" id="chk-${p.kode}" ${p.tambah_tunggakan_ke_invoice ? 'checked' : ''} onchange="ubahOpsiInvoicePetugas('${p.kode}', this.checked)">
-          <label class="form-check-label fw-bold" for="chk-${p.kode}">${p.kode.toUpperCase()} - ${p.nama_petugas}</label>
+        <div class="d-flex justify-content-between align-items-center bg-white p-2 border rounded">
+          <div class="form-check form-switch mb-0">
+            <input class="form-check-input ms-0 me-2" type="checkbox" id="chk-${p.kode}" ${p.tambah_tunggakan_ke_invoice ? 'checked' : ''} onchange="ubahOpsiInvoicePetugas('${p.kode}')">
+            <label class="form-check-label fw-bold" for="chk-${p.kode}">${p.kode.toUpperCase()} - ${p.nama_petugas}</label>
+          </div>
+          <div class="d-flex align-items-center gap-1" title="Tanggal Berangkat Invoice (Invoice bulan lalu yg lunas sebelum tgl ini otomatis dihapus)">
+            <span class="text-muted" style="font-size:0.7rem;">Tgl:</span>
+            <input type="number" id="tglb-${p.kode}" class="form-control form-control-sm text-center px-1" style="width:48px; height:24px; font-size:0.75rem;" min="1" max="31" value="${tglBerangkat}" onchange="ubahOpsiInvoicePetugas('${p.kode}')">
+          </div>
         </div>
       </div>`;
   });
   container.innerHTML = html;
 }
 
-async function ubahOpsiInvoicePetugas(kode, isChecked) {
+async function ubahOpsiInvoicePetugas(kode) {
+  const isChecked = document.getElementById(`chk-${kode}`).checked;
+  const tglBerangkat = parseInt(document.getElementById(`tglb-${kode}`).value || 15, 10);
   const statusEl = document.getElementById("statusProsesModal");
-  statusEl.innerHTML = `<span class="text-primary">⏳ Memperbarui daftar Invoice untuk petugas ${kode}...</span>`;
-  const { error } = await db.rpc('setel_invoice_petugas', { p_kode_petugas: kode, p_tambah_tunggakan: isChecked });
+
+  statusEl.innerHTML = `<span class="text-primary">⏳ Menyortir daftar Invoice petugas ${kode.toUpperCase()} (Tgl Berangkat: ${tglBerangkat})...</span>`;
+  const { error } = await db.rpc('setel_invoice_petugas', { 
+    p_kode_petugas: kode, 
+    p_tambah_tunggakan: isChecked,
+    p_tgl_berangkat: tglBerangkat
+  });
+
   if (error) statusEl.innerHTML = `<span class="text-danger">❌ Error: ${error.message}</span>`;
   else {
-    statusEl.innerHTML = `<span class="text-success">✅ Aturan Invoice petugas ${kode.toUpperCase()} berhasil diperbarui!</span>`;
+    statusEl.innerHTML = `<span class="text-success">✅ Invoice ${kode.toUpperCase()} diperbarui! (Invoice lalu yg lunas sebelum Tgl ${tglBerangkat} dihapus, Nunggak 2 & 3 lalu tetap masuk semua).</span>`;
     if (currentSheet === 'invoice') loadSheet('invoice');
   }
 }
@@ -818,12 +854,57 @@ async function prosesTambahInvoiceManual() {
   const statusEl = document.getElementById("statusProsesModal");
   if (idpels.length === 0) return;
 
-  statusEl.innerHTML = `<span class="text-primary">⏳ Menambahkan ${idpels.length} IDPEL ke daftar Invoice...</span>`;
+  statusEl.innerHTML = `<span class="text-primary">⏳ Menyimpan ${idpels.length} IDPEL Invoice Bulan Lalu & menyortir tanggal berangkat...</span>`;
   const { data, error } = await db.rpc('tambah_invoice_manual', { p_idpels: idpels });
   if (error) statusEl.innerHTML = `<span class="text-danger">❌ Error: ${error.message}</span>`;
   else {
-    statusEl.innerHTML = `<span class="text-success">✅ Berhasil! ${idpels.length} IDPEL disimpan sebagai pelanggan Invoice.</span>`;
+    statusEl.innerHTML = `<span class="text-success">✅ Berhasil! ${idpels.length} IDPEL disimpan sebagai Invoice Bulan Lalu (${data} aktif setelah sortir tgl berangkat).</span>`;
     document.getElementById("textIdpelInvoiceManual").value = "";
+    if (currentSheet === 'invoice') loadSheet('invoice');
+  }
+}
+
+async function prosesTambahTunggakanL23Manual() {
+  const idpels = ekstrakDaftarIdpel(document.getElementById("textIdpelTunggakanL23").value);
+  const statusEl = document.getElementById("statusProsesModal");
+  if (idpels.length === 0) return;
+
+  statusEl.innerHTML = `<span class="text-primary">⏳ Menyimpan ${idpels.length} IDPEL Nunggak 2 & 3 Bulan Lalu...</span>`;
+  const { data, error } = await db.rpc('tambah_tunggakan_l23_lalu_manual', { p_idpels: idpels });
+  if (error) statusEl.innerHTML = `<span class="text-danger">❌ Error: ${error.message}</span>`;
+  else {
+    statusEl.innerHTML = `<span class="text-success">✅ Berhasil! ${data} IDPEL Nunggak 2 & 3 Bulan Lalu dimasukkan semua ke Invoice.</span>`;
+    document.getElementById("textIdpelTunggakanL23").value = "";
+    if (currentSheet === 'invoice') loadSheet('invoice');
+  }
+}
+
+async function prosesTambahTunggakanLaluManual() {
+  const idpels = ekstrakDaftarIdpel(document.getElementById("textIdpelTunggakanLalu").value);
+  const statusEl = document.getElementById("statusProsesModal");
+  if (idpels.length === 0) return;
+
+  statusEl.innerHTML = `<span class="text-primary">⏳ Menyimpan ${idpels.length} IDPEL Nunggak L1 Bulan Lalu...</span>`;
+  const { data, error } = await db.rpc('tambah_tunggakan_lalu_manual', { p_idpels: idpels });
+  if (error) statusEl.innerHTML = `<span class="text-danger">❌ Error: ${error.message}</span>`;
+  else {
+    statusEl.innerHTML = `<span class="text-success">✅ Berhasil! ${data} IDPEL disimpan ke memori Tunggakan L1 Bulan Lalu.</span>`;
+    document.getElementById("textIdpelTunggakanLalu").value = "";
+    if (currentSheet === 'invoice') loadSheet('invoice');
+  }
+}
+
+async function prosesHapusInvoiceManual() {
+  const idpels = ekstrakDaftarIdpel(document.getElementById("textIdpelHapusInvoice").value);
+  const statusEl = document.getElementById("statusProsesModal");
+  if (idpels.length === 0) return;
+
+  statusEl.innerHTML = `<span class="text-primary">⏳ Menghapus ${idpels.length} IDPEL dari daftar Invoice...</span>`;
+  const { data, error } = await db.rpc('hapus_invoice_manual', { p_idpels: idpels });
+  if (error) statusEl.innerHTML = `<span class="text-danger">❌ Error: ${error.message}</span>`;
+  else {
+    statusEl.innerHTML = `<span class="text-success">✅ Berhasil mengeluarkan ${data} pelanggan dari tab Invoice.</span>`;
+    document.getElementById("textIdpelHapusInvoice").value = "";
     if (currentSheet === 'invoice') loadSheet('invoice');
   }
 }
