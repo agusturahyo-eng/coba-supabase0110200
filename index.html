@@ -295,16 +295,16 @@ tr.clickable:hover td { filter: brightness(0.95); }
           <!-- TAB 3: INPUT SALDO AWAL -->
           <div class="tab-pane fade" id="pane-input">
             <div class="alert alert-secondary py-2 small">
-              <b>Input Data Tagihan / Tunggakan PLN (Mode Cepat 60.000+ Data):</b><br>
-              Anda bisa <b>Upload File Excel/CSV</b> atau <b>Copy-Paste</b> langsung dari Excel PLN (Urutan kolom: <code>idpel | koked | nama | tarif | daya | alamat | lembar | rptag | rpbk</code>). Nama & Alamat yang berbintang (<code>***</code>) otomatis diganti dengan data asli dari <code>dataplg3</code>!
+              <b>Input Data Tagihan / Tunggakan PLN (Mendukung File Asli <code>.xlsx</code> Kolom A s/d AA):</b><br>
+              ⚠️ <b>PENTING:</b> Pastikan file Excel <b>sudah ditutup di aplikasi Microsoft Excel</b> sebelum Anda klik tombol <b>Pilih File</b> di bawah agar tidak muncul pesan error gagal baca!
             </div>
             <div class="mb-2">
-              <label class="form-label small fw-bold">Opsi A: Pilih File Excel (.xlsx / .csv)</label>
-              <input type="file" id="fileInputPln" class="form-control form-control-sm" accept=".csv, .xlsx, .xls">
+              <label class="form-label small fw-bold">Opsi A: Pilih File Excel Asli PLN (.xlsx / .csv)</label>
+              <input type="file" id="fileInputPln" class="form-control form-control-sm" accept=".csv, .xlsx, .xls" onchange="siapkanFileKeMemori(this, 'input_awal')">
             </div>
             <div class="mb-2">
               <label class="form-label small fw-bold">Opsi B: Atau Copy-Paste Baris dari Excel PLN</label>
-              <textarea id="textCopasPln" class="form-control form-control-sm" rows="5" placeholder="Copy blok data dari Excel (idpel s/d rpbk) lalu Paste di sini..."></textarea>
+              <textarea id="textCopasPln" class="form-control form-control-sm" rows="5" placeholder="Atau blok langsung baris data di dalam Excel (dari kolom A sampai AA), Copy, lalu Paste di sini..."></textarea>
             </div>
             <div class="d-flex gap-2">
               <button class="btn btn-primary btn-sm fw-bold flex-grow-1" onclick="prosesInputDataAwal()">📤 Upload & Simpan ke Database</button>
@@ -369,9 +369,9 @@ tr.clickable:hover td { filter: brightness(0.95); }
             <div class="p-2 border border-primary rounded mb-3 bg-light">
               <h6 class="fw-bold text-primary mb-1">A. Update Data Teknis dari DIL (Tanpa Merusak Nama & Alamat Asli)</h6>
               <div class="small text-muted mb-2">
-                Upload file Excel/CSV <b>DIL</b> yang berbintang (<code>***</code>). Sistem otomatis mengambil <b>KDDK, Tarif, Daya, Gardu, Tiang, No KWH, Koordinat, NIK, & No HP</b>, sedangkan <b>Nama & Alamat asli pelanggan lama di <code>dataplg3</code> tetap dijaga utuh!</b>
+                Upload file Excel/CSV <b>DIL</b> yang berbintang (<code>***</code>). Sistem otomatis mengambil <b>KDDK, Tarif, Daya, Gardu, Tiang, No KWH, Koordinat, NIK, & No HP</b>, sedangkan <b>Nama & Alamat asli pelanggan lama di <code>dataplg3</code> tetap dijaga utuh!</b> (Tutup dulu file di Excel sebelum pilih file).
               </div>
-              <input type="file" id="fileMasterDil" class="form-control form-control-sm mb-2" accept=".xlsx, .xls, .csv">
+              <input type="file" id="fileMasterDil" class="form-control form-control-sm mb-2" accept=".xlsx, .xls, .csv" onchange="siapkanFileKeMemori(this, 'master_dil')">
               <button class="btn btn-primary btn-sm fw-bold w-100" onclick="prosesUpdateMasterDil()">🔄 Proses & Update Data Teknis DIL ke dataplg3</button>
             </div>
 
@@ -413,6 +413,30 @@ let allData = [], currentDetail = [], currentTitle = "", currentPetugas = "Semua
 let historyStack = [], sortState = { key: null, asc: true };
 let daftarMasterPetugas = [];
 
+// Penyimpan file di memori agar tidak gagal baca setelah dipilih
+let cacheFileBuffer = { input_awal: null, master_dil: null };
+let cacheFileName = { input_awal: "", master_dil: "" };
+
+async function siapkanFileKeMemori(inputEl, key) {
+  const statusEl = document.getElementById("statusProsesModal");
+  cacheFileBuffer[key] = null;
+  cacheFileName[key] = "";
+
+  if (!inputEl.files || inputEl.files.length === 0) return;
+  const file = inputEl.files[0];
+
+  statusEl.innerHTML = `<span class="text-primary">⏳ Mengamankan file <b>${file.name}</b> ke memori browser...</span>`;
+  try {
+    const buf = await file.arrayBuffer();
+    cacheFileBuffer[key] = buf;
+    cacheFileName[key] = file.name;
+    statusEl.innerHTML = `<span class="text-success">✅ File <b>${file.name}</b> (${(buf.byteLength / 1024 / 1024).toFixed(2)} MB) siap diupload! Silakan klik tombol biru di bawah.</span>`;
+  } catch (err) {
+    inputEl.value = "";
+    statusEl.innerHTML = `<span class="text-danger">❌ File <b>${file.name}</b> sedang dikunci oleh Microsoft Excel atau OneDrive!<br>👉 Solusi: <b>Tutup dulu file tersebut di Microsoft Excel</b>, lalu klik <b>Pilih File</b> lagi.</span>`;
+  }
+}
+
 function getBiayaAdminPetugas(kode) {
   if (!kode || kode === "Semua") return 0;
   const val = localStorage.getItem("admin_rp_" + kode.toLowerCase());
@@ -449,10 +473,13 @@ function bukaPintuRahasia() {
 document.getElementById("inputTglLunas").value = new Date().getDate();
 document.getElementById("inputTglEis").value = new Date().getDate();
 
+// Pembaca angka Rupiah yang aman untuk titik ribuan (55.026 -> 55026) maupun angka murni
 const parseIDR = (val) => {
-  if (!val) return 0;
-  if (typeof val === 'number') return val;
-  let clean = String(val).replace(/[^0-9,-]/g, '').split(',')[0];
+  if (val === null || val === undefined || val === "") return 0;
+  if (typeof val === 'number') return Math.round(val);
+  let s = String(val).trim();
+  if (/^\d+\.\d{1,2}$/.test(s)) return Math.round(parseFloat(s));
+  let clean = s.split(',')[0].replace(/\./g, '').replace(/[^0-9-]/g, '');
   return parseFloat(clean) || 0;
 };
 
@@ -900,7 +927,7 @@ async function prosesCekEis() {
   }
 }
 
-// FUNGSI INPUT SALDO AWAL JALUR CEPAT (60.000+ PELANGGAN)
+// FUNGSI INPUT SALDO AWAL: DUKUNG PENUH FILE ASLI .XLSX (KOLOM A s/d AA), CSV, & COPAS
 async function prosesInputDataAwal() {
   const fileEl = document.getElementById("fileInputPln");
   const textVal = document.getElementById("textCopasPln").value.trim();
@@ -909,62 +936,171 @@ async function prosesInputDataAwal() {
   let rowsToInsert = [];
 
   try {
-    if (fileEl.files.length > 0) {
-      const file = fileEl.files[0];
-      statusEl.innerHTML = `<span class="text-primary">⏳ Membaca file ${file.name} (Mohon tunggu 5-15 detik untuk 60rb baris)...</span>`;
+    if (cacheFileBuffer.input_awal || fileEl.files.length > 0) {
+      let dataBuf = cacheFileBuffer.input_awal;
+      let fileName = cacheFileName.input_awal;
+
+      if (!dataBuf && fileEl.files.length > 0) {
+        const file = fileEl.files[0];
+        fileName = file.name;
+        dataBuf = await file.arrayBuffer();
+      }
+
+      statusEl.innerHTML = `<span class="text-primary">⏳ Mengekstrak 60.000+ baris dari <b>${fileName}</b> (Mohon tunggu 5-15 detik)...</span>`;
       await new Promise(r => setTimeout(r, 100));
 
-      const dataBuf = await file.arrayBuffer();
-      const wb = XLSX.read(dataBuf, { raw: true });
-      const sheet = wb.Sheets[wb.SheetNames[0]];
-      const rows = XLSX.utils.sheet_to_json(sheet, { header: 1, defval: "" });
+      let rows = [];
+      if (fileName.toLowerCase().endsWith(".csv")) {
+        const decoder = new TextDecoder("utf-8");
+        const csvText = decoder.decode(dataBuf);
+        const parsed = Papa.parse(csvText, { skipEmptyLines: true });
+        rows = parsed.data;
+      } else {
+        const wb = XLSX.read(dataBuf, { raw: true });
+        const sheet = wb.Sheets[wb.SheetNames[0]];
+        rows = XLSX.utils.sheet_to_json(sheet, { header: 1, raw: true, defval: "" });
+      }
 
-      for (let i = 0; i < rows.length; i++) {
+      if (rows.length < 2) {
+        statusEl.innerHTML = `<span class="text-danger">⚠️️ File kosong atau tidak terbaca!</span>`;
+        return;
+      }
+
+      // Cari baris Header otomatis (antisipasi jika ada judul di baris 1)
+      let headerRowIdx = -1;
+      for (let i = 0; i < Math.min(10, rows.length); i++) {
+        const rowStr = rows[i].map(c => String(c || "").trim().toUpperCase());
+        if (rowStr.includes("IDPEL") || rowStr.includes("RPTAG") || rowStr.includes("UNITUP")) {
+          headerRowIdx = i;
+          break;
+        }
+      }
+
+      let idxIdpel = 2, idxKoked = -1, idxNama = 3, idxAlamat = 4, idxGardu = 7, idxTarif = 8, idxDaya = 9, idxLembar = 14, idxRptag = 25, idxRpbk = 26;
+
+      if (headerRowIdx !== -1) {
+        const headers = rows[headerRowIdx].map(h => String(h || "").trim().toUpperCase().replace(/[_-]/g, " "));
+        const findCol = (names, fallback) => {
+          for (const n of names) {
+            const idx = headers.indexOf(n);
+            if (idx !== -1) return idx;
+          }
+          return fallback;
+        };
+
+        idxIdpel  = findCol(["IDPEL", "ID PELANGGAN"], 2);
+        idxKoked  = findCol(["KOKED", "KDDK", "KODE KEDUDUKAN"], -1);
+        idxNama   = findCol(["NAMA", "NAMA PELANGGAN"], 3);
+        idxAlamat = findCol(["ALAMAT"], 4);
+        idxGardu  = findCol(["GARDU", "NOMOR GARDU"], 7);
+        idxTarif  = findCol(["TARIF", "TARIP", "TRF"], 8);
+        idxDaya   = findCol(["DAYA"], 9);
+        idxLembar = findCol(["LEMBAR", "LBR"], 14);
+        idxRptag  = findCol(["RPTAG", "RP TAG", "TAGIHAN"], 25);
+        idxRpbk   = findCol(["RPBK", "RP BK", "BK", "DENDA"], 26);
+      } else {
+        // Jika tanpa baris header, cek apakah kolom A adalah IDPEL 12 digit atau UNITAP 5 digit
+        const sampleCol0 = String(rows[0][0] || "").trim();
+        if (sampleCol0.length >= 11) {
+          // Format 9 kolom standar (idpel | koked | nama | tarif | daya | alamat | lembar | rptag | rpbk)
+          idxIdpel = 0; idxKoked = 1; idxNama = 2; idxTarif = 3; idxDaya = 4; idxAlamat = 5; idxLembar = 6; idxRptag = 7; idxRpbk = 8; idxGardu = -1;
+        }
+      }
+
+      let contohRusakIlmiah = false;
+      const startRow = headerRowIdx !== -1 ? headerRowIdx + 1 : 0;
+
+      for (let i = startRow; i < rows.length; i++) {
         const r = rows[i];
-        if (!r || r.length < 7) continue;
-        const idpel = String(r[0] || "").replace(/\.0$/, "").trim();
-        if (idpel.length >= 8 && !isNaN(idpel)) {
+        if (!r || r.length < 5) continue;
+
+        let rawIdpel = String(r[idxIdpel] ?? "").replace(/\.0$/, "").trim();
+        if (rawIdpel.toUpperCase().includes("E+")) {
+          contohRusakIlmiah = true;
+          continue;
+        }
+
+        const idpelClean = rawIdpel.replace(/[^0-9]/g, "");
+        if (idpelClean.length >= 10) {
           rowsToInsert.push({
-            idpel: idpel,
-            koked: String(r[1] || "").trim(),
-            nama: String(r[2] || "").trim(),
-            tarif: String(r[3] || "").trim(),
-            daya: parseInt(r[4] || 0, 10) || 0,
-            alamat: String(r[5] || "").trim(),
-            lembar: parseInt(r[6] || 1, 10) || 1,
-            rptag: parseIDR(r[7] || 0),
-            rpbk: parseIDR(r[8] || 0)
+            idpel: idpelClean,
+            koked: idxKoked >= 0 ? String(r[idxKoked] ?? "").trim() : "",
+            nama: idxNama >= 0 ? String(r[idxNama] ?? "").trim() : "",
+            tarif: idxTarif >= 0 ? String(r[idxTarif] ?? "").trim() : "",
+            daya: idxDaya >= 0 ? (parseInt(String(r[idxDaya] ?? "0").replace(/[^0-9]/g, ""), 10) || 0) : 0,
+            alamat: idxAlamat >= 0 ? String(r[idxAlamat] ?? "").trim() : "",
+            lembar: idxLembar >= 0 ? (parseInt(String(r[idxLembar] ?? "1").replace(/[^0-9]/g, ""), 10) || 1) : 1,
+            rptag: idxRptag >= 0 ? parseIDR(r[idxRptag]) : 0,
+            rpbk: idxRpbk >= 0 ? parseIDR(r[idxRpbk]) : 0,
+            gardu: idxGardu >= 0 ? String(r[idxGardu] ?? "").trim() : ""
           });
         }
       }
+
+      if (rowsToInsert.length === 0 && contohRusakIlmiah) {
+        statusEl.innerHTML = `<span class="text-danger">❌ Nomor IDPEL di file CSV ini rusak menjadi <b>5,24E+11</b>! Silakan pilih file asli <b>.xlsx</b> (yang IDPEL-nya utuh 12 digit).</span>`;
+        return;
+      }
+
     } else if (textVal !== "") {
       const lines = textVal.split(/\r?\n/);
       lines.forEach(line => {
         const cols = line.split("\t");
         if (cols.length >= 7) {
-          const idpel = cols[0].replace(/\.0$/, "").trim();
-          if (idpel && !isNaN(idpel) && idpel.length >= 8) {
+          // Deteksi apakah user copas dari Kolom A (UNITAP | UNITUP | IDPEL ... sampai AA = 27 kolom)
+          if (cols.length >= 26 && String(cols[2] || "").replace(/[^0-9]/g, "").length >= 10) {
             rowsToInsert.push({
-              idpel: idpel,
-              koked: (cols[1] || "").trim(),
-              nama: (cols[2] || "").trim(),
-              tarif: (cols[3] || "").trim(),
-              daya: parseInt(cols[4] || 0, 10) || 0,
-              alamat: (cols[5] || "").trim(),
-              lembar: parseInt(cols[6] || 1, 10) || 1,
-              rptag: parseIDR(cols[7] || 0),
-              rpbk: parseIDR(cols[8] || 0)
+              idpel: String(cols[2]).replace(/\.0$/, "").replace(/[^0-9]/g, ""),
+              koked: "",
+              nama: (cols[3] || "").trim(),
+              alamat: (cols[4] || "").trim(),
+              gardu: (cols[7] || "").trim(),
+              tarif: (cols[8] || "").trim(),
+              daya: parseInt(String(cols[9] || "0").replace(/[^0-9]/g, ""), 10) || 0,
+              lembar: parseInt(String(cols[14] || "1").replace(/[^0-9]/g, ""), 10) || 1,
+              rptag: parseIDR(cols[25] || 0),
+              rpbk: parseIDR(cols[26] || 0)
             });
+          } else if (cols.length >= 24 && String(cols[0] || "").replace(/[^0-9]/g, "").length >= 10) {
+            // Jika user copas mulai dari Kolom C (IDPEL s/d RPBK = 25 kolom)
+            rowsToInsert.push({
+              idpel: String(cols[0]).replace(/\.0$/, "").replace(/[^0-9]/g, ""),
+              koked: "",
+              nama: (cols[1] || "").trim(),
+              alamat: (cols[2] || "").trim(),
+              gardu: (cols[5] || "").trim(),
+              tarif: (cols[6] || "").trim(),
+              daya: parseInt(String(cols[7] || "0").replace(/[^0-9]/g, ""), 10) || 0,
+              lembar: parseInt(String(cols[12] || "1").replace(/[^0-9]/g, ""), 10) || 1,
+              rptag: parseIDR(cols[23] || 0),
+              rpbk: parseIDR(cols[24] || 0)
+            });
+          } else {
+            // Format 9 kolom standar
+            const idpel = String(cols[0] || "").replace(/\.0$/, "").replace(/[^0-9]/g, "");
+            if (idpel.length >= 10) {
+              rowsToInsert.push({
+                idpel: idpel,
+                koked: (cols[1] || "").trim(),
+                nama: (cols[2] || "").trim(),
+                tarif: (cols[3] || "").trim(),
+                daya: parseInt(String(cols[4] || "0").replace(/[^0-9]/g, ""), 10) || 0,
+                alamat: (cols[5] || "").trim(),
+                lembar: parseInt(String(cols[6] || "1").replace(/[^0-9]/g, ""), 10) || 1,
+                rptag: parseIDR(cols[7] || 0),
+                rpbk: parseIDR(cols[8] || 0)
+              });
+            }
           }
         }
       });
     } else {
-      statusEl.innerHTML = `<span class="text-danger">⚠️ Pilih file atau Paste data dari Excel terlebih dahulu!</span>`;
+      statusEl.innerHTML = `<span class="text-danger">⚠️ Pilih file Excel (.xlsx) atau Paste data terlebih dahulu!</span>`;
       return;
     }
 
     if (rowsToInsert.length === 0) {
-      statusEl.innerHTML = `<span class="text-danger">⚠️ Tidak ditemukan baris IDPEL yang valid. Pastikan kolom ke-1 adalah IDPEL.</span>`;
+      statusEl.innerHTML = `<span class="text-danger">⚠️ Tidak ditemukan baris IDPEL 12 digit yang valid di dalam file.</span>`;
       return;
     }
 
@@ -979,17 +1115,22 @@ async function prosesInputDataAwal() {
       if (error) throw error;
     }
 
-    statusEl.innerHTML = `<span class="text-primary">⚡ Menyinkronkan Nama/Alamat dengan dataplg3 & membagi Kode Petugas...</span>`;
+    statusEl.innerHTML = `<span class="text-primary">⚡ Menyinkronkan Nama/Alamat/KDDK dengan dataplg3 & membagi Kode Petugas...</span>`;
     const { error: errSync } = await db.rpc('finalisasi_sinkron_tagihan');
     if (errSync) throw errSync;
 
-    statusEl.innerHTML = `<span class="text-success">✅ Selesai! ${rowsToInsert.length.toLocaleString("id-ID")} pelanggan berhasil diupload & disinkronkan dengan dataplg3!</span>`;
+    statusEl.innerHTML = `<span class="text-success">✅ Selesai! ${rowsToInsert.length.toLocaleString("id-ID")} pelanggan berhasil diupload & disinkronkan penuh dengan dataplg3!</span>`;
     document.getElementById("textCopasPln").value = "";
     fileEl.value = "";
+    cacheFileBuffer.input_awal = null;
     loadSheet(currentSheet);
 
   } catch (err) {
-    statusEl.innerHTML = `<span class="text-danger">❌ Gagal saat upload: ${err.message}</span>`;
+    if (String(err.message).includes("could not be read")) {
+      statusEl.innerHTML = `<span class="text-danger">❌ File sedang dibuka/dikunci oleh Microsoft Excel! <b>Tutup dulu file tersebut di Microsoft Excel</b>, lalu klik tombol <b>Pilih File</b> ulang.</span>`;
+    } else {
+      statusEl.innerHTML = `<span class="text-danger">❌ Gagal saat upload: ${err.message}</span>`;
+    }
   }
 }
 
@@ -1000,17 +1141,23 @@ async function prosesUpdateMasterDil() {
   const fileEl = document.getElementById("fileMasterDil");
   const statusEl = document.getElementById("statusProsesModal");
 
-  if (fileEl.files.length === 0) {
+  if (!cacheFileBuffer.master_dil && fileEl.files.length === 0) {
     statusEl.innerHTML = `<span class="text-danger">⚠️ Pilih file Excel/CSV DIL terlebih dahulu!</span>`;
     return;
   }
 
-  const file = fileEl.files[0];
-  statusEl.innerHTML = `<span class="text-primary">⏳ Membaca file DIL ${file.name} (Mohon tunggu 5-15 detik)...</span>`;
-  await new Promise(r => setTimeout(r, 100));
-
   try {
-    const dataBuf = await file.arrayBuffer();
+    let dataBuf = cacheFileBuffer.master_dil;
+    let fileName = cacheFileName.master_dil;
+    if (!dataBuf && fileEl.files.length > 0) {
+      const file = fileEl.files[0];
+      fileName = file.name;
+      dataBuf = await file.arrayBuffer();
+    }
+
+    statusEl.innerHTML = `<span class="text-primary">⏳ Membaca file DIL <b>${fileName}</b> (Mohon tunggu 5-15 detik)...</span>`;
+    await new Promise(r => setTimeout(r, 100));
+
     const wb = XLSX.read(dataBuf, { raw: true });
     const sheet = wb.Sheets[wb.SheetNames[0]];
     const rows = XLSX.utils.sheet_to_json(sheet, { header: 1, defval: "" });
@@ -1020,7 +1167,6 @@ async function prosesUpdateMasterDil() {
       return;
     }
 
-    // Deteksi posisi indeks kolom dari baris header
     const headers = rows[0].map(h => String(h || "").trim().toUpperCase().replace(/[_-]/g, " "));
     const findIdx = (keys, fallbackIdx) => {
       for (const k of keys) {
@@ -1049,8 +1195,8 @@ async function prosesUpdateMasterDil() {
     for (let i = 1; i < rows.length; i++) {
       const r = rows[i];
       if (!r || r.length === 0) continue;
-      const idpel = String(r[idxIdpel] ?? "").replace(/\.0$/, "").trim();
-      if (idpel.length >= 8 && !isNaN(idpel)) {
+      const idpel = String(r[idxIdpel] ?? "").replace(/\.0$/, "").replace(/[^0-9]/g, "").trim();
+      if (idpel.length >= 10) {
         rowsDil.push({
           "IDPEL": idpel,
           "KDDK": idxKddk >= 0 ? String(r[idxKddk] ?? "").trim() : "",
@@ -1089,6 +1235,7 @@ async function prosesUpdateMasterDil() {
 
     statusEl.innerHTML = `<span class="text-success">✅ Selesai! ${totalBerhasil.toLocaleString("id-ID")} data teknis di dataplg3 berhasil diperbarui dari DIL (Nama & Alamat asli pelanggan lama tetap utuh!).</span>`;
     fileEl.value = "";
+    cacheFileBuffer.master_dil = null;
     loadSheet(currentSheet);
 
   } catch (err) {
@@ -1122,8 +1269,8 @@ async function prosesUpdateMasterPb() {
         for (let i = 0; i < rows.length; i++) {
           const r = rows[i];
           if (!r || r.length < 2) continue;
-          const idpel = String(r[idxId] ?? "").replace(/\.0$/, "").trim();
-          if (idpel.length >= 8 && !isNaN(idpel)) {
+          const idpel = String(r[idxId] ?? "").replace(/\.0$/, "").replace(/[^0-9]/g, "").trim();
+          if (idpel.length >= 10) {
             rowsPb.push({
               "IDPEL": idpel,
               "NAMA": String(r[idxNm] ?? "").trim(),
@@ -1137,8 +1284,8 @@ async function prosesUpdateMasterPb() {
       lines.forEach(line => {
         const cols = line.split("\t");
         if (cols.length >= 2) {
-          const idpel = cols[0].replace(/\.0$/, "").trim();
-          if (idpel && !isNaN(idpel) && idpel.length >= 8) {
+          const idpel = cols[0].replace(/\.0$/, "").replace(/[^0-9]/g, "").trim();
+          if (idpel.length >= 10) {
             rowsPb.push({
               "IDPEL": idpel,
               "NAMA": (cols[1] || "").trim(),
@@ -1226,7 +1373,7 @@ function simpanBiayaAdminDariTab4(kode) {
   if (nominal > 0) {
     statusEl.innerHTML = `<span class="text-success">✅ Biaya Admin petugas ${kode.toUpperCase()} disetel: Rp${nominal.toLocaleString("id-ID")} (Tanpa tulisan belum termasuk admin).</span>`;
   } else {
-    statusEl.innerHTML = `<span class="text-primary">ℹ️️ Petugas ${kode.toUpperCase()} disetel Tanpa Biaya Admin (Muncul tulisan belum termasuk biaya admin).</span>`;
+    statusEl.innerHTML = `<span class="text-primary">ℹ️ Petugas ${kode.toUpperCase()} disetel Tanpa Biaya Admin (Muncul tulisan belum termasuk biaya admin).</span>`;
   }
 }
 
