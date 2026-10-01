@@ -131,7 +131,7 @@ tr.clickable:hover td { filter: brightness(0.95); }
           <!-- TAB 1: UPDATE PELUNASAN HARIAN -->
           <div class="tab-pane fade show active" id="pane-lunas">
             <div class="alert alert-info py-2 small">
-              <b>Opsi 1 (Paling Praktis):</b> Upload langsung file Excel <code>Pelunasan_Online_DAFTAR_TRANSAKSI...xlsx</code> dari PLN tanpa perlu diedit. Sistem otomatis membaca <b>IDPEL</b> dan <b>TglTransaksi</b> sekaligus (dan otomatis menyortir Invoice yang lunas sebelum tgl berangkat)!
+              <b>Opsi 1 (Paling Praktis):</b> Upload langsung file Excel <code>Pelunasan_Online_DAFTAR_TRANSAKSI...xlsx</code> dari PLN tanpa perlu diedit. Sistem otomatis membaca <b>IDPEL</b> dan <b>TglTransaksi</b> sekaligus!
             </div>
             <div class="mb-3 p-2 border rounded bg-light">
               <label class="form-label small fw-bold mb-1">📂 Pilih File Excel Pelunasan Online PLN (.xlsx / .xls):</label>
@@ -186,38 +186,47 @@ tr.clickable:hover td { filter: brightness(0.95); }
             </div>
           </div>
 
-          <!-- TAB 4: PENGATURAN INVOICE TGL 15 & SORTIR TGL BERANGKAT -->
+          <!-- TAB 4: PENGATURAN INVOICE TGL 15 & SORTIR TGL BERANGKAT BULAN LALU -->
           <div class="tab-pane fade" id="pane-invoice">
             <div class="alert alert-primary py-2 small mb-2">
-              <b>Aturan Cetak & Sortir Invoice Per Petugas:</b><br>
-              • Isi <b>Tgl Berangkat</b>: Data Invoice berdasar bulan lalu yang <b>sudah lunas sebelum tanggal tersebut</b> otomatis dihapus.<br>
-              • Data <b>Nunggak 2 & 3 Bulan Lalu</b> tetap dimasukkan semua ke Invoice (karena bulan lalu masuk di Tunggakan, bukan Invoice).<br>
+              <b>Aturan Sortir Invoice Berdasar Bulan Lalu:</b><br>
+              • Isi <b>Tgl Berangkat</b> per petugas: Data Invoice bulan lalu yang <b>di bulan lalunya sudah lunas sebelum tanggal tersebut</b> otomatis dihapus.<br>
+              • Data <b>Nunggak 2 & 3 Bulan Lalu</b> tetap dimasukkan semua.<br>
               • Centang saklar jika petugas juga meminta tambahan dari <b>Nunggak L1 Bulan Lalu</b>.
             </div>
 
-            <div class="mb-3 border rounded p-2 bg-light" style="max-height: 220px; overflow-y: auto;">
+            <div class="mb-3 border rounded p-2 bg-light" style="max-height: 210px; overflow-y: auto;">
               <div id="listPetugasInvoice" class="row g-2 small">Memuat daftar petugas...</div>
             </div>
 
+            <!-- KOTAK 1: INVOICE BULAN LALU BESERTA TGL LUNAS BULAN LALU -->
+            <div class="p-2 border border-primary rounded mb-2 bg-white">
+              <label class="form-label small fw-bold text-primary mb-1">1. Copas Data Sheet INVOICE Bulan Lalu (Tanpa Perlu Sortir Manual):</label>
+              <div class="row g-1 mb-1">
+                <div class="col-7">
+                  <textarea id="textIdpelInvoiceManual" class="form-control form-control-sm" rows="2" placeholder="Paste kolom IDPEL Invoice bulan lalu di sini..."></textarea>
+                </div>
+                <div class="col-5">
+                  <textarea id="textTglLunasInvoiceLalu" class="form-control form-control-sm" rows="2" placeholder="Paste kolom TGL LUNAS bulan lalu (sejajar barisnya)..."></textarea>
+                </div>
+              </div>
+              <button class="btn btn-primary btn-sm fw-bold w-100" onclick="prosesTambahInvoiceManual()">➕ Simpan Invoice Bulan Lalu & Sortir Otomatis Sesuai Tgl Berangkat</button>
+            </div>
+
             <div class="row g-2">
-              <div class="col-md-6">
-                <label class="form-label small fw-bold text-primary mb-1">1. Copas IDPEL Invoice Bulan Lalu (Ikut Sortir Tgl):</label>
-                <textarea id="textIdpelInvoiceManual" class="form-control form-control-sm mb-1" rows="2" placeholder="Paste IDPEL dari sheet INVOICE bulan lalu..."></textarea>
-                <button class="btn btn-primary btn-sm fw-bold w-100" onclick="prosesTambahInvoiceManual()">➕ Simpan Invoice Bulan Lalu</button>
+              <div class="col-md-4">
+                <label class="form-label small fw-bold text-success mb-1">2. Nunggak 2 & 3 Lalu (Masuk Semua):</label>
+                <textarea id="textIdpelTunggakanL23" class="form-control form-control-sm mb-1" rows="2" placeholder="Paste IDPEL L2 & L3 bulan lalu..."></textarea>
+                <button class="btn btn-success btn-sm fw-bold w-100" onclick="prosesTambahTunggakanL23Manual()">➕ Simpan L2 & L3 Lalu</button>
               </div>
-              <div class="col-md-6">
-                <label class="form-label small fw-bold text-success mb-1">2. Copas Nunggak 2 & 3 Bulan Lalu (Masuk Semua):</label>
-                <textarea id="textIdpelTunggakanL23" class="form-control form-control-sm mb-1" rows="2" placeholder="Paste IDPEL Nunggak L2 & L3 bulan lalu..."></textarea>
-                <button class="btn btn-success btn-sm fw-bold w-100" onclick="prosesTambahTunggakanL23Manual()">➕ Simpan Nunggak 2 & 3 Lalu</button>
+              <div class="col-md-4">
+                <label class="form-label small fw-bold text-secondary mb-1">3. Nunggak L1 Lalu (Ikut Centang):</label>
+                <textarea id="textIdpelTunggakanLalu" class="form-control form-control-sm mb-1" rows="2" placeholder="Paste IDPEL Nunggak L1 lalu..."></textarea>
+                <button class="btn btn-secondary btn-sm fw-bold w-100" onclick="prosesTambahTunggakanLaluManual()">➕ Simpan L1 Lalu</button>
               </div>
-              <div class="col-md-6">
-                <label class="form-label small fw-bold text-secondary mb-1">3. Copas Nunggak L1 Bulan Lalu (Sesuai Centang):</label>
-                <textarea id="textIdpelTunggakanLalu" class="form-control form-control-sm mb-1" rows="2" placeholder="Paste IDPEL Nunggak L1 bulan lalu..."></textarea>
-                <button class="btn btn-secondary btn-sm fw-bold w-100" onclick="prosesTambahTunggakanLaluManual()">➕ Simpan Nunggak L1 Lalu</button>
-              </div>
-              <div class="col-md-6">
-                <label class="form-label small fw-bold text-danger mb-1">4. Hapus Manual IDPEL dari Invoice:</label>
-                <textarea id="textIdpelHapusInvoice" class="form-control form-control-sm mb-1" rows="2" placeholder="Paste IDPEL yg ingin dihapus dari Invoice..."></textarea>
+              <div class="col-md-4">
+                <label class="form-label small fw-bold text-danger mb-1">4. Hapus Manual IDPEL Invoice:</label>
+                <textarea id="textIdpelHapusInvoice" class="form-control form-control-sm mb-1" rows="2" placeholder="Paste IDPEL yg ingin dihapus..."></textarea>
                 <button class="btn btn-danger btn-sm fw-bold w-100" onclick="prosesHapusInvoiceManual()">🗑️ Hapus dari Invoice</button>
               </div>
             </div>
@@ -794,13 +803,13 @@ async function prosesInputDataAwal() {
 }
 
 async function prosesGantiBulan() {
-  if (!confirm("Yakin ingin memulai Bulan Baru?\n\nSistem akan otomatis menyimpan memori pelanggan Invoice, Nunggak 2 & 3, serta Nunggak L1 bulan ini ke tabel pengingat, lalu mengosongkan tabel untuk diisi data bulan baru.")) return;
+  if (!confirm("Yakin ingin memulai Bulan Baru?\n\nSistem akan otomatis menyimpan memori pelanggan Invoice (beserta Tanggal Lunasnya), Nunggak 2 & 3, serta Nunggak L1 bulan ini ke tabel pengingat, lalu mengosongkan tabel untuk diisi data bulan baru.")) return;
   const statusEl = document.getElementById("statusProsesModal");
   statusEl.innerHTML = `<span class="text-primary">⏳ Menyimpan memori Invoice & mereset tabel...</span>`;
   const { error } = await db.rpc('ganti_bulan_baru');
   if (error) statusEl.innerHTML = `<span class="text-danger">❌ Error: ${error.message}</span>`;
   else {
-    statusEl.innerHTML = `<span class="text-success">✅ Tabel berhasil direset! Memori Invoice & Tunggakan bulan lalu telah diamankan.</span>`;
+    statusEl.innerHTML = `<span class="text-success">✅ Tabel berhasil direset! Memori Invoice (beserta Tanggal Lunas bulan lalu) telah diamankan.</span>`;
     loadSheet(currentSheet);
   }
 }
@@ -820,7 +829,7 @@ async function muatDaftarPetugasModal() {
             <input class="form-check-input ms-0 me-2" type="checkbox" id="chk-${p.kode}" ${p.tambah_tunggakan_ke_invoice ? 'checked' : ''} onchange="ubahOpsiInvoicePetugas('${p.kode}')">
             <label class="form-check-label fw-bold" for="chk-${p.kode}">${p.kode.toUpperCase()} - ${p.nama_petugas}</label>
           </div>
-          <div class="d-flex align-items-center gap-1" title="Tanggal Berangkat Invoice (Invoice bulan lalu yg lunas sebelum tgl ini otomatis dihapus)">
+          <div class="d-flex align-items-center gap-1" title="Tanggal Berangkat Invoice (Invoice bulan lalu yg lunas sebelum tgl ini di bulan lalu otomatis dihapus)">
             <span class="text-muted" style="font-size:0.7rem;">Tgl:</span>
             <input type="number" id="tglb-${p.kode}" class="form-control form-control-sm text-center px-1" style="width:48px; height:24px; font-size:0.75rem;" min="1" max="31" value="${tglBerangkat}" onchange="ubahOpsiInvoicePetugas('${p.kode}')">
           </div>
@@ -844,22 +853,48 @@ async function ubahOpsiInvoicePetugas(kode) {
 
   if (error) statusEl.innerHTML = `<span class="text-danger">❌ Error: ${error.message}</span>`;
   else {
-    statusEl.innerHTML = `<span class="text-success">✅ Invoice ${kode.toUpperCase()} diperbarui! (Invoice lalu yg lunas sebelum Tgl ${tglBerangkat} dihapus, Nunggak 2 & 3 lalu tetap masuk semua).</span>`;
+    statusEl.innerHTML = `<span class="text-success">✅ Invoice ${kode.toUpperCase()} diperbarui! (Yang bulan lalu lunas sebelum Tgl ${tglBerangkat} otomatis dihapus, Nunggak 2 & 3 tetap masuk semua).</span>`;
     if (currentSheet === 'invoice') loadSheet('invoice');
   }
 }
 
 async function prosesTambahInvoiceManual() {
-  const idpels = ekstrakDaftarIdpel(document.getElementById("textIdpelInvoiceManual").value);
+  const rawIdpels = document.getElementById("textIdpelInvoiceManual").value.trim();
+  const rawTgls = document.getElementById("textTglLunasInvoiceLalu").value.trim();
   const statusEl = document.getElementById("statusProsesModal");
-  if (idpels.length === 0) return;
+  if (!rawIdpels) return;
 
-  statusEl.innerHTML = `<span class="text-primary">⏳ Menyimpan ${idpels.length} IDPEL Invoice Bulan Lalu & menyortir tanggal berangkat...</span>`;
-  const { data, error } = await db.rpc('tambah_invoice_manual', { p_idpels: idpels });
+  const linesIdpel = rawIdpels.split(/\r?\n/);
+  const linesTgl = rawTgls ? rawTgls.split(/\r?\n/) : [];
+
+  let listIdpel = [];
+  let listTglLunas = [];
+
+  linesIdpel.forEach((line, idx) => {
+    const parts = line.split("\t");
+    const idp = parts[0].trim();
+    if (idp.length >= 8 && !isNaN(idp)) {
+      listIdpel.push(idp);
+      // Jika user copas 2 kolom sekaligus di kotak kiri, ambil kolom ke-2; jika tidak, ambil dari kotak kanan
+      let tglVal = parts.length > 1 ? parts[1].trim() : (linesTgl[idx] ? linesTgl[idx].trim() : "BELUM LUNAS");
+      if (!tglVal || tglVal === "-" || tglVal === "0") tglVal = "BELUM LUNAS";
+      listTglLunas.push(tglVal);
+    }
+  });
+
+  if (listIdpel.length === 0) return;
+
+  statusEl.innerHTML = `<span class="text-primary">⏳ Menyimpan ${listIdpel.length} data Invoice Bulan Lalu beserta Tgl Lunasnya...</span>`;
+  const { data, error } = await db.rpc('tambah_invoice_lalu_lengkap', { 
+    p_idpels: listIdpel, 
+    p_tgl_lunas: listTglLunas 
+  });
+
   if (error) statusEl.innerHTML = `<span class="text-danger">❌ Error: ${error.message}</span>`;
   else {
-    statusEl.innerHTML = `<span class="text-success">✅ Berhasil! ${idpels.length} IDPEL disimpan sebagai Invoice Bulan Lalu (${data} aktif setelah sortir tgl berangkat).</span>`;
+    statusEl.innerHTML = `<span class="text-success">✅ Berhasil! Dari ${listIdpel.length} IDPEL Invoice Bulan Lalu, sebanyak ${data} masuk ke Invoice bulan ini (sisanya otomatis dihapus karena bulan lalu lunas sebelum Tgl Berangkat).</span>`;
     document.getElementById("textIdpelInvoiceManual").value = "";
+    document.getElementById("textTglLunasInvoiceLalu").value = "";
     if (currentSheet === 'invoice') loadSheet('invoice');
   }
 }
