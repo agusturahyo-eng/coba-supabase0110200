@@ -131,16 +131,24 @@ tr.clickable:hover td { filter: brightness(0.95); }
           <!-- TAB 1: UPDATE PELUNASAN HARIAN -->
           <div class="tab-pane fade show active" id="pane-lunas">
             <div class="alert alert-info py-2 small">
-              <b>Cara Pakai:</b> Pilih tanggal lunas, lalu <b>Copy-Paste</b> deretan kolom <code>idpel</code> yang lunas hari ini dari Excel Anda.
+              <b>Opsi 1 (Paling Praktis):</b> Upload langsung file Excel <code>Pelunasan_Online_DAFTAR_TRANSAKSI...xlsx</code> dari PLN tanpa perlu diedit. Sistem otomatis membaca <b>IDPEL</b> dan <b>TglTransaksi</b> (21 s/d 31) sekaligus!
             </div>
+            <div class="mb-3 p-2 border rounded bg-light">
+              <label class="form-label small fw-bold mb-1">📂 Pilih File Excel Pelunasan Online PLN (.xlsx / .xls):</label>
+              <input type="file" id="fileLunasPln" class="form-control form-control-sm mb-2" accept=".xlsx, .xls, .csv">
+              <button class="btn btn-primary btn-sm fw-bold w-100" onclick="prosesFilePelunasanPln()">🚀 Upload & Update Otomatis dari File PLN</button>
+            </div>
+
+            <hr class="my-2">
+            <div class="small text-muted mb-1 fw-bold">Opsi 2: Atau Copy-Paste Manual Daftar IDPEL:</div>
             <div class="row g-2 mb-2 align-items-center">
               <div class="col-auto"><label class="fw-bold small">Tanggal Lunas:</label></div>
               <div class="col-auto">
                 <input type="number" id="inputTglLunas" class="form-control form-control-sm" style="width:90px" min="1" max="31">
               </div>
             </div>
-            <textarea id="textIdpelLunas" class="form-control form-control-sm mb-2" rows="6" placeholder="Paste daftar IDPEL yang lunas di sini (bisa ribuan baris sekaligus)..."></textarea>
-            <button class="btn btn-success btn-sm fw-bold w-100" onclick="prosesPelunasanHarian()">✅ Proses Update Pelunasan Otomatis</button>
+            <textarea id="textIdpelLunas" class="form-control form-control-sm mb-2" rows="4" placeholder="Paste daftar IDPEL yang lunas di sini..."></textarea>
+            <button class="btn btn-success btn-sm fw-bold w-100" onclick="prosesPelunasanHarian()">✅ Proses Copy-Paste Manual</button>
           </div>
 
           <!-- TAB 2: CEK EIS -->
@@ -537,6 +545,91 @@ function renderPetugas() {
 function ekstrakDaftarIdpel(teks) {
   return teks.split(/[\r\n\t,; ]+/).map(s => s.trim()).filter(s => s.length >= 8 && !isNaN(s));
 }
+async function prosesFilePelunasanPln() {
+  const fileEl = document.getElementById("fileLunasPln");
+  const statusEl = document.getElementById("statusProsesModal");
+
+  if (fileEl.files.length === 0) {
+    statusEl.innerHTML = `<span class="text-danger">⚠️ Pilih file Excel Pelunasan Online terlebih dahulu!</span>`;
+    return;
+  }
+
+  statusEl.innerHTML = `<span class="text-primary">⏳ Membaca file Excel Pelunasan Online PLN...</span>`;
+
+  try {
+    const file = fileEl.files[0];
+    const dataBuf = await file.arrayBuffer();
+    const wb = XLSX.read(dataBuf);
+    const sheet = wb.Sheets[wb.SheetNames[0]];
+    
+    // Baca seluruh baris sebagai array (agar otomatis melewati kop PLN di baris 1-7)
+    const rows = XLSX.utils.sheet_to_json(sheet, { header: 1, defval: "" });
+
+    let idxTgl = -1, idxIdpel = -1, startRow = 0;
+
+    // Cari posisi baris header yang memiliki kolom 'TglTransaksi' dan 'Idpel'
+    for (let i = 0; i < Math.min(20, rows.length); i++) {
+      const rowStr = rows[i].map(c => String(c).trim().toLowerCase());
+      if (rowStr.includes("tgltransaksi") && rowStr.includes("idpel")) {
+        idxTgl = rowStr.indexOf("tgltransaksi");
+        idxIdpel = rowStr.indexOf("idpel");
+        startRow = i + 1;
+        break;
+      }
+    }
+
+    if (idxTgl === -1 || idxIdpel === -1) {
+      statusEl.innerHTML = `<span class="text-danger">❌ Kolom 'TglTransaksi' atau 'Idpel' tidak ditemukan di dalam file!</span>`;
+      return;
+    }
+
+    // Kelompokkan IDPEL berdasarkan tanggal (2 digit terakhir dari YYYYMMDD)
+    const grupPerTanggal = {};
+    let totalIdpelTerbaca = 0;
+
+    for (let i = startRow; i < rows.length; i++) {
+      const r = rows[i];
+      if (!r || r.length <= Math.max(idxTgl, idxIdpel)) continue;
+
+      const rawIdpel = String(r[idxIdpel]).replace(/\.0$/, "").trim();
+      const rawTgl = String(r[idxTgl]).replace(/\.0$/, "").trim();
+
+      // Validasi IDPEL (angka minimal 10 digit) dan TglTransaksi (YYYYMMDD = 8 digit)
+      if (rawIdpel.length >= 10 && !isNaN(rawIdpel) && rawTgl.length >= 8) {
+        const hariLunas = String(parseInt(rawTgl.slice(-2), 10)); // Ambil 2 angka belakang (misal '21')
+        if (!grupPerTanggal[hariLunas]) grupPerTanggal[hariLunas] = new Set();
+        grupPerTanggal[hariLunas].add(rawIdpel);
+      }
+    }
+
+    const daftarTanggal = Object.keys(grupPerTanggal).sort((a, b) => parseInt(a) - parseInt(b));
+    if (daftarTanggal.length === 0) {
+      statusEl.innerHTML = `<span class="text-danger">⚠️ Tidak ditemukan data transaksi yang valid di dalam file.</span>`;
+      return;
+    }
+
+    let totalTerupdate = 0;
+    for (const tgl of daftarTanggal) {
+      const listIdpel = Array.from(grupPerTanggal[tgl]);
+      totalIdpelTerbaca += listIdpel.length;
+      statusEl.innerHTML = `<span class="text-primary">⏳ Mengupdate pelunasan Tanggal ${tgl} (${listIdpel.length} IDPEL)...</span>`;
+
+      const { data, error } = await db.rpc('update_pelunasan_massal', {
+        p_tgl: tgl,
+        p_idpels: listIdpel
+      });
+
+      if (error) throw error;
+      totalTerupdate += (data || 0);
+    }
+
+    statusEl.innerHTML = `<span class="text-success">✅ Selesai! Dari ${totalIdpelTerbaca} IDPEL di file (Tgl ${daftarTanggal[0]} s/d ${daftarTanggal[daftarTanggal.length - 1]}), sebanyak ${totalTerupdate} data tunggakan berhasil diupdate menjadi LUNAS!</span>`;
+    fileEl.value = "";
+    loadSheet(currentSheet);
+
+  } catch (err) {
+    statusEl.innerHTML = `<span class="text-danger">❌ Gagal memproses file: ${err.message}</span>`;
+  }
 
 async function prosesPelunasanHarian() {
   const tgl = document.getElementById("inputTglLunas").value.trim();
