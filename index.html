@@ -92,7 +92,7 @@ tr.clickable:hover td { filter: brightness(0.95); }
       <li class="nav-item"><a class="nav-link" id="tab-invoice" onclick="loadSheet('invoice')">Invoice</a></li>
     </ul>
     <button id="btnAdmin" class="btn btn-primary btn-sm fw-bold shadow-sm d-none" data-bs-toggle="modal" data-bs-target="#adminModal" onclick="muatDaftarPetugasModal()">
-      ⚙️️ Kelola & Update Data
+      ⚙️ Kelola & Update Data
     </button>
   </div>
 
@@ -109,6 +109,54 @@ tr.clickable:hover td { filter: brightness(0.95); }
 
   <button id="backBtn" class="btn btn-secondary btn-sm mb-2 d-none fw-bold">⬅ Kembali</button>
   <div id="view"></div>
+</div>
+
+<!-- ================= MODAL CETAK MASSAL INVOICE F4 (4 PER LEMBAR) ================= -->
+<div class="modal fade" id="cetakF4Modal" tabindex="-1">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header bg-primary text-white py-2">
+        <h6 class="modal-title fw-bold">🖨️ Cetak Invoice Kertas F4 (1 Lembar = 4 Invoice)</h6>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body small">
+        <input type="hidden" id="cetakKodePetugas">
+        <div class="alert alert-info py-2 mb-3">
+          Mencetak daftar pelanggan <b>BELUM LUNAS</b> untuk petugas: <b id="labelPetugasCetak" class="text-primary"></b>
+        </div>
+
+        <div class="mb-3">
+          <label class="form-label fw-bold mb-1">1. Pilihan Biaya Admin:</label>
+          <select id="selectOpsiAdmin" class="form-select form-select-sm mb-2" onchange="toggleInputAdminCetak()">
+            <option value="tanpa">Tanpa Biaya Admin — Ada tulisan "(belum termasuk biaya admin)"</option>
+            <option value="pakai">Pakai Biaya Admin — Nominal ditambah Admin & Tanpa tulisan</option>
+          </select>
+          <div id="boxNominalAdmin" class="d-none p-2 border rounded bg-light">
+            <label class="form-label fw-bold mb-1 text-success">Masukkan Nominal Biaya Admin (Rp):</label>
+            <input type="number" id="inputNominalAdmin" class="form-control form-control-sm" value="2500" step="500" placeholder="Contoh: 2500 atau 3000">
+            <div class="text-muted mt-1" style="font-size:0.72rem;">*Otomatis ditambahkan ke jumlah tagihan di bagian kiri (petugas) & kanan (pelanggan).</div>
+          </div>
+        </div>
+
+        <div class="row g-2 mb-3">
+          <div class="col-6">
+            <label class="form-label fw-bold mb-1">2. Urutkan Berdasarkan:</label>
+            <select id="selectUrutanCetak" class="form-select form-select-sm">
+              <option value="koked">Koked (Rute Baca Meter)</option>
+              <option value="idpel">IDPEL</option>
+              <option value="nama">Nama Pelanggan</option>
+            </select>
+          </div>
+          <div class="col-6">
+            <label class="form-label fw-bold mb-1">3. Tanggal Surat Cetak:</label>
+            <input type="text" id="inputTglSuratCetak" class="form-control form-control-sm">
+          </div>
+        </div>
+
+        <button class="btn btn-primary fw-bold w-100" onclick="eksekusiCetakF4()">📥 Download PDF Siap Cetak (Ukuran F4)</button>
+      </div>
+    </div>
+  </div>
 </div>
 
 <!-- ================= MODAL KELOLA & UPDATE DATA ================= -->
@@ -668,7 +716,7 @@ async function prosesFilePelunasanPln() {
       totalTerupdate += (data || 0);
     }
 
-    statusEl.innerHTML = `<span class="text-success">✅ Selesai! Dari ${totalIdpelTerbaca} IDPEL di file (Tgl ${daftarTanggal[0]} s/d ${daftarTanggal[daftarTanggal.length - 1]}), sebanyak ${totalTerupdate} data berhasil diupdate menjadi LUNAS!</span>`;
+    statusEl.innerHTML = `<span class="text-success">✅ Selesai! Dari ${totalIdpelTerbaca} IDPEL di file (Tgl${daftarTanggal[0]} s/d ${daftarTanggal[daftarTanggal.length - 1]}), sebanyak${totalTerupdate} data berhasil diupdate menjadi LUNAS!</span>`;
     fileEl.value = "";
     loadSheet(currentSheet);
 
@@ -693,7 +741,7 @@ async function prosesPelunasanHarian() {
   if (error) {
     statusEl.innerHTML = `<span class="text-danger">❌ Error: ${error.message}</span>`;
   } else {
-    statusEl.innerHTML = `<span class="text-success">✅ Berhasil! ${data} pelanggan ditandai LUNAS pada tanggal ${tgl}.</span>`;
+    statusEl.innerHTML = `<span class="text-success">✅ Berhasil! ${data} pelanggan ditandai LUNAS pada tanggal${tgl}.</span>`;
     document.getElementById("textIdpelLunas").value = "";
     loadSheet(currentSheet);
   }
@@ -715,7 +763,7 @@ async function prosesCekEis() {
   if (error) {
     statusEl.innerHTML = `<span class="text-danger">❌ Error: ${error.message}</span>`;
   } else {
-    statusEl.innerHTML = `<span class="text-success">✅ Selesai! ${data} pelanggan yang sudah tidak ada di EIS otomatis LUNAS tanggal ${tgl}.</span>`;
+    statusEl.innerHTML = `<span class="text-success">✅ Selesai! ${data} pelanggan yang sudah tidak ada di EIS otomatis LUNAS tanggal${tgl}.</span>`;
     document.getElementById("textIdpelEis").value = "";
     loadSheet(currentSheet);
   }
@@ -788,7 +836,7 @@ async function prosesInputDataAwal() {
   const chunkSize = 1000;
   for (let i = 0; i < rowsToInsert.length; i += chunkSize) {
     const chunk = rowsToInsert.slice(i, i + chunkSize);
-    statusEl.innerHTML = `<span class="text-primary">⏳ Mengunggah data ke Supabase (${Math.min(i + chunkSize, rowsToInsert.length)} / ${rowsToInsert.length})...</span>`;
+    statusEl.innerHTML = `<span class="text-primary">⏳ Mengunggah data ke Supabase (${Math.min(i + chunkSize, rowsToInsert.length)} /${rowsToInsert.length})...</span>`;
     const { error } = await db.from('data_tunggakan').upsert(chunk, { onConflict: 'idpel' });
     if (error) {
       statusEl.innerHTML = `<span class="text-danger">❌ Gagal saat upload: ${error.message}</span>`;
@@ -827,7 +875,7 @@ async function muatDaftarPetugasModal() {
         <div class="d-flex justify-content-between align-items-center bg-white p-2 border rounded">
           <div class="form-check form-switch mb-0">
             <input class="form-check-input ms-0 me-2" type="checkbox" id="chk-${p.kode}" ${p.tambah_tunggakan_ke_invoice ? 'checked' : ''} onchange="ubahOpsiInvoicePetugas('${p.kode}')">
-            <label class="form-check-label fw-bold" for="chk-${p.kode}">${p.kode.toUpperCase()} - ${p.nama_petugas}</label>
+            <label class="form-check-label fw-bold" for="chk-${p.kode}">${p.kode.toUpperCase()} -${p.nama_petugas}</label>
           </div>
           <div class="d-flex align-items-center gap-1" title="Tanggal Berangkat Invoice (Invoice bulan lalu yg lunas sebelum tgl ini di bulan lalu otomatis dihapus)">
             <span class="text-muted" style="font-size:0.7rem;">Tgl:</span>
@@ -844,7 +892,7 @@ async function ubahOpsiInvoicePetugas(kode) {
   const tglBerangkat = parseInt(document.getElementById(`tglb-${kode}`).value || 15, 10);
   const statusEl = document.getElementById("statusProsesModal");
 
-  statusEl.innerHTML = `<span class="text-primary">⏳ Menyortir daftar Invoice petugas ${kode.toUpperCase()} (Tgl Berangkat: ${tglBerangkat})...</span>`;
+  statusEl.innerHTML = `<span class="text-primary">⏳ Menyortir daftar Invoice petugas ${kode.toUpperCase()} (Tgl Berangkat:${tglBerangkat})...</span>`;
   const { error } = await db.rpc('setel_invoice_petugas', { 
     p_kode_petugas: kode, 
     p_tambah_tunggakan: isChecked,
@@ -853,7 +901,7 @@ async function ubahOpsiInvoicePetugas(kode) {
 
   if (error) statusEl.innerHTML = `<span class="text-danger">❌ Error: ${error.message}</span>`;
   else {
-    statusEl.innerHTML = `<span class="text-success">✅ Invoice ${kode.toUpperCase()} diperbarui! (Yang bulan lalu lunas sebelum Tgl ${tglBerangkat} otomatis dihapus, Nunggak 2 & 3 tetap masuk semua).</span>`;
+    statusEl.innerHTML = `<span class="text-success">✅ Invoice ${kode.toUpperCase()} diperbarui! (Yang bulan lalu lunas sebelum Tgl${tglBerangkat} otomatis dihapus, Nunggak 2 & 3 tetap masuk semua).</span>`;
     if (currentSheet === 'invoice') loadSheet('invoice');
   }
 }
@@ -875,7 +923,6 @@ async function prosesTambahInvoiceManual() {
     const idp = parts[0].trim();
     if (idp.length >= 8 && !isNaN(idp)) {
       listIdpel.push(idp);
-      // Jika user copas 2 kolom sekaligus di kotak kiri, ambil kolom ke-2; jika tidak, ambil dari kotak kanan
       let tglVal = parts.length > 1 ? parts[1].trim() : (linesTgl[idx] ? linesTgl[idx].trim() : "BELUM LUNAS");
       if (!tglVal || tglVal === "-" || tglVal === "0") tglVal = "BELUM LUNAS";
       listTglLunas.push(tglVal);
@@ -892,7 +939,7 @@ async function prosesTambahInvoiceManual() {
 
   if (error) statusEl.innerHTML = `<span class="text-danger">❌ Error: ${error.message}</span>`;
   else {
-    statusEl.innerHTML = `<span class="text-success">✅ Berhasil! Dari ${listIdpel.length} IDPEL Invoice Bulan Lalu, sebanyak ${data} masuk ke Invoice bulan ini (sisanya otomatis dihapus karena bulan lalu lunas sebelum Tgl Berangkat).</span>`;
+    statusEl.innerHTML = `<span class="text-success">✅ Berhasil! Dari ${listIdpel.length} IDPEL Invoice Bulan Lalu, sebanyak${data} masuk ke Invoice bulan ini (sisanya otomatis dihapus karena bulan lalu lunas sebelum Tgl Berangkat).</span>`;
     document.getElementById("textIdpelInvoiceManual").value = "";
     document.getElementById("textTglLunasInvoiceLalu").value = "";
     if (currentSheet === 'invoice') loadSheet('invoice');
@@ -945,7 +992,202 @@ async function prosesHapusInvoiceManual() {
 }
 
 // ============================================================================
-// 5. DETAIL PETUGAS, PENCARIAN, EXCEL, WA, PDF, & GAMBAR
+// 5. FITUR CETAK MASSAL INVOICE F4 (1 LEMBAR F4 = 4 INVOICE)
+// ============================================================================
+function bukaModalCetakF4(kodePetugas) {
+  document.getElementById("cetakKodePetugas").value = kodePetugas;
+  const dataBelum = allData.filter(r => (kodePetugas === "Semua" ? true : r.kode === kodePetugas) && !getStatusLunas(r).isLunas);
+  const namaLabel = kodePetugas === "Semua" ? `Semua Petugas (${dataBelum.length} Pelanggan)` : `${kodePetugas.toUpperCase()} (${dataBelum.length} Pelanggan)`;
+  document.getElementById("labelPetugasCetak").innerText = namaLabel;
+
+  const skrg = new Date();
+  const namaBulan = ["Januari", "Februari", "Maret", "April", "Mei", "Juni", "Juli", "Agustus", "September", "Oktober", "November", "Desember"];
+  document.getElementById("inputTglSuratCetak").value = `${skrg.getDate()} ${namaBulan[skrg.getMonth()]}${skrg.getFullYear()}`;
+
+  const modalEl = new bootstrap.Modal(document.getElementById('cetakF4Modal'));
+  modalEl.show();
+}
+
+function toggleInputAdminCetak() {
+  const opsi = document.getElementById("selectOpsiAdmin").value;
+  const box = document.getElementById("boxNominalAdmin");
+  if (opsi === "pakai") box.classList.remove("d-none");
+  else box.classList.add("d-none");
+}
+
+function eksekusiCetakF4() {
+  const kode = document.getElementById("cetakKodePetugas").value;
+  const opsiAdmin = document.getElementById("selectOpsiAdmin").value;
+  const biayaAdmin = opsiAdmin === "pakai" ? (parseFloat(document.getElementById("inputNominalAdmin").value) || 0) : 0;
+  const pakaiAdmin = opsiAdmin === "pakai";
+  const urutan = document.getElementById("selectUrutanCetak").value;
+  const tglSurat = document.getElementById("inputTglSuratCetak").value.trim();
+
+  let listCetak = allData.filter(r => (kode === "Semua" ? true : r.kode === kode) && !getStatusLunas(r).isLunas);
+  if (listCetak.length === 0) {
+    alert("Tidak ada pelanggan BELUM LUNAS untuk dicetak!");
+    return;
+  }
+
+  // Urutkan data agar mudah dibagikan di lapangan
+  listCetak.sort((a, b) => {
+    let v1 = String(a[urutan] || ""), v2 = String(b[urutan] || "");
+    return v1.localeCompare(v2, undefined, { numeric: true });
+  });
+
+  // Ukuran Kertas F4 Portrait: Lebar 215 mm, Tinggi 330 mm (4 slot @ 82.5 mm)
+  const doc = new jsPDF({ orientation: "portrait", unit: "mm", format: [215, 330] });
+  const skrg = new Date();
+  const namaBulan = ["Januari", "Februari", "Maret", "April", "Mei", "Juni", "Juli", "Agustus", "September", "Oktober", "November", "Desember"];
+  const bulanTagihan = `${namaBulan[skrg.getMonth()]}${skrg.getFullYear()}`;
+
+  const slotHeight = 82.5;
+
+  listCetak.forEach((r, idx) => {
+    const slotIdx = idx % 4;
+    if (idx > 0 && slotIdx === 0) {
+      doc.addPage([215, 330], "portrait");
+    }
+
+    const yTop = slotIdx * slotHeight;
+    gambarSatuSlotInvoiceF4(doc, r, yTop, slotHeight, pakaiAdmin, biayaAdmin, bulanTagihan, tglSurat, idx < listCetak.length - 1);
+  });
+
+  const namaFile = `Cetak_Invoice_F4_${kode}_${pakaiAdmin ? 'PlusAdmin' + biayaAdmin : 'TanpaAdmin'}.pdf`;
+  doc.save(namaFile);
+}
+
+function gambarSatuSlotInvoiceF4(doc, r, yTop, slotH, pakaiAdmin, biayaAdmin, bulanTagihan, tglSurat, adaGarisPotongBawah) {
+  const totalTagihan = parseIDR(r.jumlah) + (pakaiAdmin ? biayaAdmin : 0);
+  const totalStr = totalTagihan.toLocaleString("id-ID");
+  const teksAdmin = pakaiAdmin ? "" : " (belum termasuk biaya admin)";
+
+  // 1. Garis Pemisah Vertikal Kiri (Bukti Petugas) & Kanan (Pelanggan) di X = 60mm
+  doc.setLineWidth(0.3);
+  doc.setLineDashPattern([], 0);
+  doc.line(60, yTop + 3, 60, yTop + slotH - 3);
+
+  // 2. Garis Potong Horizontal Putus-putus di Bawah Slot (untuk slot 1, 2, 3)
+  if (slotTopIndex(yTop, slotH) < 3) {
+    doc.setLineDashPattern([1.5, 1.5], 0);
+    doc.line(3, yTop + slotH, 212, yTop + slotH);
+    doc.setLineDashPattern([], 0);
+  }
+
+  // ================= BAGIAN KIRI: BUKTI PETUGAS =================
+  let yL = yTop + 7;
+  const xL1 = 5, xL2 = 20;
+  doc.setFont("helvetica", "normal");
+  doc.setFontSize(7.8);
+
+  doc.text("Nama", xL1, yL); doc.text(": " + String(r.nama || '-').substring(0, 22), xL2, yL); yL += 6;
+  doc.text("Idpel", xL1, yL); doc.text(": " + String(r.idpel || '-'), xL2, yL); yL += 3.8;
+  doc.text("Alamat", xL1, yL); doc.text(": " + String(r.alamat || '-').substring(0, 22), xL2, yL); yL += 6;
+
+  doc.text("Trf/dy", xL1, yL); doc.text(": " + (r.tarif || '-') + " / " + (r.daya || '-'), xL2, yL); yL += 3.8;
+  doc.text("Gardu/T", xL1, yL); doc.text(": " + String(r.gardu || ''), xL2, yL); yL += 3.8;
+  doc.text("Koked", xL1, yL); doc.text(": " + String(r.koked || '-'), xL2, yL); yL += 3.8;
+  doc.text("Tagihan", xL1, yL); doc.text(": " + totalStr, xL2, yL); yL += 3.8;
+  doc.text("No.Kwh", xL1, yL); doc.text(": " + String(r.no_kwh || ''), xL2, yL); yL += 3.8;
+  doc.text("No. Hp.", xL1, yL); doc.text(":", xL2, yL); yL += 3.8;
+  doc.text("NIK", xL1, yL); doc.text(":", xL2, yL); yL += 4.5;
+  doc.text("Keterangan :", xL1, yL);
+  doc.setLineDashPattern([0.7, 0.7], 0);
+  doc.line(xL2 + 2, yL, 57, yL);
+  doc.setLineDashPattern([], 0);
+
+  // ================= BAGIAN KANAN: UNTUK PELANGGAN =================
+  const xR = 64;
+  let yR = yTop + 6;
+
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(8.2);
+  doc.text("PT. PLN (PERSERO) UID JAWA TENGAH DAN DIY", xR, yR);
+
+  doc.setFont("helvetica", "normal");
+  doc.setFontSize(8);
+  const labelPetugas = r.kode ? r.kode.toUpperCase() : (r.nama_petugas || '-');
+  doc.text("Petugas : " + labelPetugas, 168, yR);
+  yR += 3.6;
+
+  doc.setFont("helvetica", "bold");
+  doc.text("UP3 KLATEN", xR, yR); yR += 3.6;
+  doc.text("ULP TULUNG", xR, yR); yR += 3.8;
+
+  // Judul Tengah Kanan
+  const centerR = 137;
+  doc.setFontSize(8.8);
+  doc.text("PEMBERITAHUAN TAGIHAN LISTRIK", centerR, yR, { align: "center" });
+  const titleW = doc.getTextWidth("PEMBERITAHUAN TAGIHAN LISTRIK");
+  doc.line(centerR - titleW / 2, yR + 0.8, centerR + titleW / 2, yR + 0.8);
+  yR += 4.5;
+
+  // Data Pelanggan Kanan
+  doc.setFont("helvetica", "normal");
+  doc.setFontSize(8);
+  doc.text("Pelanggan setia PLN,", xR, yR); yR += 3.6;
+
+  const c1 = xR, c1v = xR + 22, c2 = 152, c2v = 170;
+  doc.text("Nama", c1, yR); doc.text(": " + String(r.nama || '-'), c1v, yR);
+  doc.text("GarduTiang", c2, yR); doc.text(": " + String(r.gardu || ''), c2v, yR); yR += 3.6;
+
+  doc.text("Idpel", c1, yR); doc.text(": " + String(r.idpel || '-'), c1v, yR);
+  doc.text("Koked", c2, yR); doc.text(": " + String(r.koked || '-'), c2v, yR); yR += 3.6;
+
+  doc.text("Alamat", c1, yR); doc.text(": " + String(r.alamat || '-'), c1v, yR); yR += 3.6;
+
+  doc.text("Tarif / Daya", c1, yR); doc.text(": " + (r.tarif || '-') + " / " + (r.daya || '-'), c1v, yR);
+  doc.text("No. Kwh", c2, yR); doc.text(": " + String(r.no_kwh || ''), c2v, yR); yR += 4.5;
+
+  // Paragraf Tagihan (Otomatis menyesuaikan Tanpa Admin / Pakai Admin)
+  const p1 = `     Bersama ini kami sampaikan bahwa Jumlah Total tagihan listrik bulan ${bulanTagihan} adalah ${totalStr}${teksAdmin}. Agar terhindar dari pemutusan aliran listrik, kami berharap agar tagihan di atas segera dilunasi. Batas akhir pembayaran tagihan listrik adalah tanggal 20 setiap bulannya & hari libur transaksi masih bisa dilakukan pada Loket-loket PPOB online. Apabila sampai dengan batas waktu yang ditentukan, tanggal 20 belum lunas, maka akan dilakukan pemutusan aliran listrik.`;
+  const p2 = `     Demikian atas perhatian dan kerjasamanya diucapkan terimakasih.`;
+
+  doc.setFontSize(7.8);
+  const linesP1 = doc.splitTextToSize(p1, 145);
+  doc.text(linesP1, xR, yR);
+  yR += linesP1.length * 3.2;
+
+  doc.text(p2, xR, yR);
+  yR += 3.5;
+
+  // Tanggal & Tanda Tangan
+  doc.setFontSize(8);
+  doc.text(`Tulung, ${tglSurat}`, 165, yR);
+  yR += 2.5;
+
+  // Garis Atas Slogan
+  doc.line(xR, yR, 145, yR);
+  yR += 3.8;
+
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(8.2);
+  doc.text("BAYARLAH LISTRIK TANGGAL 1-15 SETIAP BULANNYA", xR, yR);
+  yR += 3.8;
+  doc.text("PASTI NYAMAN SEMUA SENANG", xR, yR);
+
+  // Nama Manager di Kanan
+  doc.setFontSize(8);
+  doc.text("MARTONO AJI PRABOWO", 182, yR, { align: "center" });
+  const mgrW = doc.getTextWidth("MARTONO AJI PRABOWO");
+  doc.line(182 - mgrW / 2, yR + 0.8, 182 + mgrW / 2, yR + 0.8);
+  yR += 1.8;
+
+  // Garis Bawah Slogan
+  doc.line(xR, yR, 145, yR);
+  yR += 3.8;
+
+  doc.setFont("helvetica", "bolditalic");
+  doc.setFontSize(7.8);
+  doc.text("ABAIKAN PEMBERITAHUAN INI JIKA SUDAH MEMBAYAR TAGIHAN", xR, yR);
+}
+
+function slotTopIndex(yTop, slotH) {
+  return Math.round(yTop / slotH);
+}
+
+// ============================================================================
+// 6. DETAIL PETUGAS, PENCARIAN, EXCEL, WA, PDF SATUAN, & GAMBAR
 // ============================================================================
 function openPetugas(k) {
   currentPetugas = k; pushView(renderPetugas);
@@ -964,10 +1206,17 @@ function openPetugas(k) {
     byDate[t] = byDate[t] || {j: 0, rp: 0}; 
     byDate[t].j++; byDate[t].rp += parseIDR(r.jumlah); 
   });
+
+  const btnCetakF4 = currentSheet === 'invoice' 
+    ? `<button class="btn btn-primary btn-sm fw-bold" onclick="bukaModalCetakF4('${k}')">🖨️ Cetak PDF F4 (4/Lembar)</button>` 
+    : ``;
   
   let h = `<div class="d-flex flex-column flex-md-row justify-content-between align-items-center mb-2 gap-2">
              <h6 class="text-primary fw-bold mb-0">Petugas: ${displayName} (${k})</h6>
-             <button class="btn btn-success btn-sm fw-bold" onclick="exportSemuaExcel('${k}')">📥 Download Data Lunas & Belum Lunas</button>
+             <div class="d-flex gap-1 flex-wrap">
+               ${btnCetakF4}
+               <button class="btn btn-success btn-sm fw-bold" onclick="exportSemuaExcel('${k}')">📥 Download Data Lunas & Belum Lunas</button>
+             </div>
            </div>
            <div class="table-responsive">
              <table class="table table-sm table-bordered table-striped bg-white">
@@ -1005,10 +1254,17 @@ function openGlobal() {
     byDate[t] = byDate[t] || {j: 0, rp: 0}; 
     byDate[t].j++; byDate[t].rp += parseIDR(r.jumlah); 
   });
+
+  const btnCetakF4 = currentSheet === 'invoice' 
+    ? `<button class="btn btn-primary btn-sm fw-bold" onclick="bukaModalCetakF4('Semua')">🖨️ Cetak PDF F4 (4/Lembar)</button>` 
+    : ``;
   
   let h = `<div class="d-flex flex-column flex-md-row justify-content-between align-items-center mb-2 gap-2">
              <h6 class="text-primary fw-bold mb-0">Semua Petugas</h6>
-             <button class="btn btn-success btn-sm fw-bold" onclick="exportSemuaExcel('Semua')">📥 Download Data Lunas & Belum Lunas</button>
+             <div class="d-flex gap-1 flex-wrap">
+               ${btnCetakF4}
+               <button class="btn btn-success btn-sm fw-bold" onclick="exportSemuaExcel('Semua')">📥 Download Data Lunas & Belum Lunas</button>
+             </div>
            </div>
            <div class="table-responsive">
              <table class="table table-sm table-bordered table-striped bg-white">
@@ -1052,7 +1308,11 @@ function detailGlobalLunas(t) { currentTitle = `Global_Lunas_${t}`; currentDetai
 
 function renderDetail() {
   sortState = { key: null, asc: true };
-  view.innerHTML = `<h6 class="text-center fw-bold small text-uppercase">${currentTitle.replace(/_/g,' ')}</h6><div class="d-flex mb-2 gap-1"><input id="search" class="form-control form-control-sm" placeholder="Cari IDPEL / Nama / Koked..."><button class="btn btn-success btn-sm text-nowrap fw-bold" onclick="exportExcel()">📥 DOWNLOAD DETAIL</button></div><div id="tableArea"></div>`;
+  const btnCetakF4 = (currentSheet === 'invoice' && currentTitle === "Belum_Lunas")
+    ? `<button class="btn btn-primary btn-sm text-nowrap fw-bold" onclick="bukaModalCetakF4('${currentPetugas}')">🖨️ CETAK F4 (4/LBR)</button>`
+    : ``;
+
+  view.innerHTML = `<h6 class="text-center fw-bold small text-uppercase">${currentTitle.replace(/_/g,' ')}</h6><div class="d-flex mb-2 gap-1"><input id="search" class="form-control form-control-sm" placeholder="Cari IDPEL / Nama / Koked...">${btnCetakF4}<button class="btn btn-success btn-sm text-nowrap fw-bold" onclick="exportExcel()">📥 DOWNLOAD DETAIL</button></div><div id="tableArea"></div>`;
   document.getElementById("search").oninput = e => {
     const t = e.target.value.toLowerCase();
     drawTable(currentDetail.filter(r => Object.values(r).some(v => String(v).toLowerCase().includes(t))));
