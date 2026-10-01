@@ -116,17 +116,41 @@ tr.clickable:hover td { filter: brightness(0.95); }
   <div class="modal-dialog">
     <div class="modal-content">
       <div class="modal-header bg-primary text-white py-2">
-        <h6 class="modal-title fw-bold">🖨️ Cetak Invoice Kertas F4 (1 Lembar = 4 Invoice)</h6>
+        <h6 class="modal-title fw-bold">🖨️ Pengaturan & Cetak Invoice F4 (1 Lembar = 4 Invoice)</h6>
         <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
       </div>
       <div class="modal-body small">
         <input type="hidden" id="cetakKodePetugas">
-        <div class="alert alert-info py-2 mb-3">
-          Mencetak daftar pelanggan <b>BELUM LUNAS</b> untuk petugas: <b id="labelPetugasCetak" class="text-primary"></b>
+        <div class="alert alert-info py-2 mb-3 d-flex justify-content-between align-items-center">
+          <span>Petugas: <b id="labelPetugasCetak" class="text-primary"></b></span>
+          <span class="badge bg-danger fs-6" id="badgeJmlCetak">0 Plg Belum Lunas</span>
         </div>
 
+        <!-- PILIHAN 1: SUMBER DATA INVOICE & TGL BERANGKAT -->
+        <div id="boxOpsiSumberInvoice" class="p-2 border border-primary rounded bg-light mb-3">
+          <div class="mb-2">
+            <label class="form-label fw-bold text-primary mb-1">1. Pilihan Data Invoice yang Dicetak:</label>
+            <select id="selectSumberInvoiceCetak" class="form-select form-select-sm fw-semibold" onchange="terapkanPerubahanOpsiDariModalCetak()">
+              <option value="invoice_saja">Hanya Berdasarkan Invoice Bulan Lalu (+ Nunggak 2 & 3)</option>
+              <option value="tambah_nunggak">Invoice Bulan Lalu + Ditambah Pelanggan Nunggak L1 Bulan Lalu</option>
+            </select>
+          </div>
+          <div class="d-flex justify-content-between align-items-center">
+            <label class="fw-bold mb-0 text-dark">2. Sortir Tanggal Berangkat Petugas:</label>
+            <div class="d-flex align-items-center gap-1">
+              <span class="text-muted">Tgl:</span>
+              <input type="number" id="inputTglBerangkatCetak" class="form-control form-control-sm text-center fw-bold" style="width:70px;" min="1" max="31" value="15" onchange="terapkanPerubahanOpsiDariModalCetak()">
+            </div>
+          </div>
+          <div class="text-muted mt-1" style="font-size:0.72rem;">
+            *Otomatis menghapus data Invoice bulan lalu yang sudah lunas sebelum tanggal berangkat di atas (Nunggak 2 & 3 tetap masuk semua).
+          </div>
+          <div id="statusSortirCetak" class="mt-1 fw-bold text-center"></div>
+        </div>
+
+        <!-- PILIHAN 3: BIAYA ADMIN -->
         <div class="mb-3">
-          <label class="form-label fw-bold mb-1">1. Pilihan Biaya Admin:</label>
+          <label class="form-label fw-bold mb-1">3. Pilihan Biaya Admin:</label>
           <select id="selectOpsiAdmin" class="form-select form-select-sm mb-2" onchange="toggleInputAdminCetak()">
             <option value="tanpa">Tanpa Biaya Admin — Ada tulisan "(belum termasuk biaya admin)"</option>
             <option value="pakai">Pakai Biaya Admin — Nominal ditambah Admin & Tanpa tulisan</option>
@@ -138,9 +162,10 @@ tr.clickable:hover td { filter: brightness(0.95); }
           </div>
         </div>
 
+        <!-- PILIHAN 4 & 5: URUTAN & TANGGAL SURAT -->
         <div class="row g-2 mb-3">
           <div class="col-6">
-            <label class="form-label fw-bold mb-1">2. Urutkan Berdasarkan:</label>
+            <label class="form-label fw-bold mb-1">4. Urutkan Berdasarkan:</label>
             <select id="selectUrutanCetak" class="form-select form-select-sm">
               <option value="koked">Koked (Rute Baca Meter)</option>
               <option value="idpel">IDPEL</option>
@@ -148,12 +173,12 @@ tr.clickable:hover td { filter: brightness(0.95); }
             </select>
           </div>
           <div class="col-6">
-            <label class="form-label fw-bold mb-1">3. Tanggal Surat Cetak:</label>
+            <label class="form-label fw-bold mb-1">5. Tanggal Surat Cetak:</label>
             <input type="text" id="inputTglSuratCetak" class="form-control form-control-sm">
           </div>
         </div>
 
-        <button class="btn btn-primary fw-bold w-100" onclick="eksekusiCetakF4()">📥 Download PDF Siap Cetak (Ukuran F4)</button>
+        <button id="btnDownloadPdfF4" class="btn btn-primary fw-bold w-100" onclick="eksekusiCetakF4()">📥 Download PDF Siap Cetak (Ukuran F4)</button>
       </div>
     </div>
   </div>
@@ -367,6 +392,39 @@ function getDayFromTgl(tglStr) {
 // ============================================================================
 // 2. FUNGSI TARIK DATA DARI SUPABASE
 // ============================================================================
+async function ambilDataSheetDariSupabase(k) {
+  let fetchedRows = [];
+  let from = 0;
+  const step = 1000;
+  
+  while (true) {
+    let query = db.from('data_tunggakan').select('*').range(from, from + step - 1);
+    
+    if (k === 'lembar1') query = query.eq('lembar', 1);
+    else if (k === 'lembar2') query = query.eq('lembar', 2);
+    else if (k === 'lembar3') query = query.gte('lembar', 3);
+    else if (k === 'invoice') query = query.eq('is_invoice', true);
+
+    const { data, error } = await query;
+    if (error) throw error;
+    if (!data || data.length === 0) break;
+    
+    fetchedRows = fetchedRows.concat(data);
+    if (data.length < step) break;
+    from += step;
+  }
+
+  if (k === 'lembar1') {
+    fetchedRows = fetchedRows.filter(r => {
+      let st = getStatusLunas(r);
+      if (!st.isLunas) return true;
+      let hari = getDayFromTgl(st.tgl);
+      return hari === null || hari >= 21;
+    });
+  }
+  return fetchedRows;
+}
+
 async function loadSheet(k) {
   currentSheet = k; historyStack = []; currentPetugas = "Semua"; 
   document.querySelectorAll(".nav-link").forEach(t => t.classList.remove("active"));
@@ -377,37 +435,7 @@ async function loadSheet(k) {
   view.innerHTML = "<div class='text-center my-5'><div class='spinner-border text-primary'></div><p class='mt-2 text-muted small'>Mengambil data dari Supabase...</p></div>";
   
   try {
-    let fetchedRows = [];
-    let from = 0;
-    const step = 1000;
-    
-    while (true) {
-      let query = db.from('data_tunggakan').select('*').range(from, from + step - 1);
-      
-      if (k === 'lembar1') query = query.eq('lembar', 1);
-      else if (k === 'lembar2') query = query.eq('lembar', 2);
-      else if (k === 'lembar3') query = query.gte('lembar', 3);
-      else if (k === 'invoice') query = query.eq('is_invoice', true);
-
-      const { data, error } = await query;
-      if (error) throw error;
-      if (!data || data.length === 0) break;
-      
-      fetchedRows = fetchedRows.concat(data);
-      if (data.length < step) break;
-      from += step;
-    }
-
-    if (k === 'lembar1') {
-      fetchedRows = fetchedRows.filter(r => {
-        let st = getStatusLunas(r);
-        if (!st.isLunas) return true;
-        let hari = getDayFromTgl(st.tgl);
-        return hari === null || hari >= 21;
-      });
-    }
-
-    allData = fetchedRows;
+    allData = await ambilDataSheetDariSupabase(k);
 
     let latestTime = null;
     allData.forEach(r => {
@@ -992,20 +1020,83 @@ async function prosesHapusInvoiceManual() {
 }
 
 // ============================================================================
-// 5. FITUR CETAK MASSAL INVOICE F4 (1 LEMBAR F4 = 4 INVOICE)
+// 5. FITUR CETAK MASSAL INVOICE F4 (1 LEMBAR F4 = 4 INVOICE) + PILIH SUMBER DATA
 // ============================================================================
-function bukaModalCetakF4(kodePetugas) {
+async function bukaModalCetakF4(kodePetugas) {
   document.getElementById("cetakKodePetugas").value = kodePetugas;
-  const dataBelum = allData.filter(r => (kodePetugas === "Semua" ? true : r.kode === kodePetugas) && !getStatusLunas(r).isLunas);
-  const namaLabel = kodePetugas === "Semua" ? `Semua Petugas (${dataBelum.length} Pelanggan)` : `${kodePetugas.toUpperCase()} (${dataBelum.length} Pelanggan)`;
-  document.getElementById("labelPetugasCetak").innerText = namaLabel;
+  document.getElementById("statusSortirCetak").innerHTML = "";
 
   const skrg = new Date();
   const namaBulan = ["Januari", "Februari", "Maret", "April", "Mei", "Juni", "Juli", "Agustus", "September", "Oktober", "November", "Desember"];
   document.getElementById("inputTglSuratCetak").value = `${skrg.getDate()} ${namaBulan[skrg.getMonth()]}${skrg.getFullYear()}`;
 
+  // Ambil pengaturan petugas saat ini dari master_petugas
+  if (kodePetugas !== "Semua") {
+    document.getElementById("boxOpsiSumberInvoice").classList.remove("d-none");
+    const { data } = await db.from('master_petugas').select('*').ilike('kode', kodePetugas).maybeSingle();
+    if (data) {
+      document.getElementById("selectSumberInvoiceCetak").value = data.tambah_tunggakan_ke_invoice ? "tambah_nunggak" : "invoice_saja";
+      document.getElementById("inputTglBerangkatCetak").value = data.tgl_berangkat_invoice || 15;
+    }
+  } else {
+    document.getElementById("boxOpsiSumberInvoice").classList.remove("d-none");
+  }
+
+  perbaruiInfoJumlahCetakF4(kodePetugas);
+
   const modalEl = new bootstrap.Modal(document.getElementById('cetakF4Modal'));
   modalEl.show();
+}
+
+function perbaruiInfoJumlahCetakF4(kodePetugas) {
+  const dataBelum = allData.filter(r => (kodePetugas === "Semua" ? true : r.kode === kodePetugas) && !getStatusLunas(r).isLunas);
+  const namaPetugas = kodePetugas === "Semua" ? "Semua Petugas" : kodePetugas.toUpperCase();
+  document.getElementById("labelPetugasCetak").innerText = namaPetugas;
+  document.getElementById("badgeJmlCetak").innerText = `${dataBelum.length} Plg Belum Lunas (${Math.ceil(dataBelum.length / 4)} Lbr F4)`;
+}
+
+async function terapkanPerubahanOpsiDariModalCetak() {
+  const kode = document.getElementById("cetakKodePetugas").value;
+  const opsiSumber = document.getElementById("selectSumberInvoiceCetak").value;
+  const tambahNunggak = (opsiSumber === "tambah_nunggak");
+  const tglBerangkat = parseInt(document.getElementById("inputTglBerangkatCetak").value || 15, 10);
+  const statusEl = document.getElementById("statusSortirCetak");
+  const btnDownload = document.getElementById("btnDownloadPdfF4");
+
+  statusEl.innerHTML = `<span class="text-primary">⏳ Menyortir ulang data Invoice sesuai pilihan...</span>`;
+  btnDownload.disabled = true;
+
+  try {
+    if (kode === "Semua") {
+      const { data: listP } = await db.from('master_petugas').select('kode').neq('kode', 'BARU');
+      if (listP) {
+        for (const p of listP) {
+          await db.rpc('setel_invoice_petugas', {
+            p_kode_petugas: p.kode,
+            p_tambah_tunggakan: tambahNunggak,
+            p_tgl_berangkat: tglBerangkat
+          });
+        }
+      }
+    } else {
+      const { error } = await db.rpc('setel_invoice_petugas', {
+        p_kode_petugas: kode,
+        p_tambah_tunggakan: tambahNunggak,
+        p_tgl_berangkat: tglBerangkat
+      });
+      if (error) throw error;
+    }
+
+    // Muat ulang data invoice terbaru dari Supabase agar jumlah cetak langsung terupdate
+    allData = await ambilDataSheetDariSupabase('invoice');
+    perbaruiInfoJumlahCetakF4(kode);
+
+    statusEl.innerHTML = `<span class="text-success">✅ Daftar siap cetak berhasil diperbarui!</span>`;
+  } catch (err) {
+    statusEl.innerHTML = `<span class="text-danger">❌ Gagal menyortir: ${err.message}</span>`;
+  } finally {
+    btnDownload.disabled = false;
+  }
 }
 
 function toggleInputAdminCetak() {
@@ -1029,7 +1120,6 @@ function eksekusiCetakF4() {
     return;
   }
 
-  // Urutkan data agar mudah dibagikan di lapangan
   listCetak.sort((a, b) => {
     let v1 = String(a[urutan] || ""), v2 = String(b[urutan] || "");
     return v1.localeCompare(v2, undefined, { numeric: true });
@@ -1050,14 +1140,14 @@ function eksekusiCetakF4() {
     }
 
     const yTop = slotIdx * slotHeight;
-    gambarSatuSlotInvoiceF4(doc, r, yTop, slotHeight, pakaiAdmin, biayaAdmin, bulanTagihan, tglSurat, idx < listCetak.length - 1);
+    gambarSatuSlotInvoiceF4(doc, r, yTop, slotHeight, pakaiAdmin, biayaAdmin, bulanTagihan, tglSurat);
   });
 
   const namaFile = `Cetak_Invoice_F4_${kode}_${pakaiAdmin ? 'PlusAdmin' + biayaAdmin : 'TanpaAdmin'}.pdf`;
   doc.save(namaFile);
 }
 
-function gambarSatuSlotInvoiceF4(doc, r, yTop, slotH, pakaiAdmin, biayaAdmin, bulanTagihan, tglSurat, adaGarisPotongBawah) {
+function gambarSatuSlotInvoiceF4(doc, r, yTop, slotH, pakaiAdmin, biayaAdmin, bulanTagihan, tglSurat) {
   const totalTagihan = parseIDR(r.jumlah) + (pakaiAdmin ? biayaAdmin : 0);
   const totalStr = totalTagihan.toLocaleString("id-ID");
   const teksAdmin = pakaiAdmin ? "" : " (belum termasuk biaya admin)";
