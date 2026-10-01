@@ -131,7 +131,7 @@ tr.clickable:hover td { filter: brightness(0.95); }
           <!-- TAB 1: UPDATE PELUNASAN HARIAN -->
           <div class="tab-pane fade show active" id="pane-lunas">
             <div class="alert alert-info py-2 small">
-              <b>Opsi 1 (Paling Praktis):</b> Upload langsung file Excel <code>Pelunasan_Online_DAFTAR_TRANSAKSI...xlsx</code> dari PLN tanpa perlu diedit. Sistem otomatis membaca <b>IDPEL</b> dan <b>TglTransaksi</b> (21 s/d 31) sekaligus!
+              <b>Opsi 1 (Paling Praktis):</b> Upload langsung file Excel <code>Pelunasan_Online_DAFTAR_TRANSAKSI...xlsx</code> dari PLN tanpa perlu diedit. Sistem otomatis membaca <b>IDPEL</b> dan <b>TglTransaksi</b> sekaligus!
             </div>
             <div class="mb-3 p-2 border rounded bg-light">
               <label class="form-label small fw-bold mb-1">📂 Pilih File Excel Pelunasan Online PLN (.xlsx / .xls):</label>
@@ -170,7 +170,7 @@ tr.clickable:hover td { filter: brightness(0.95); }
           <div class="tab-pane fade" id="pane-input">
             <div class="alert alert-secondary py-2 small">
               <b>Input Data Tagihan / Tunggakan PLN:</b><br>
-              Anda bisa <b>Upload File Excel/CSV</b> atau <b>Copy-Paste</b> langsung dari Excel PLN (Urutan kolom tanpa/dengan header: <code>idpel | koked | nama | tarif | daya | alamat | lembar | rptag | rpbk</code>). Rumus Jumlah, Kode Petugas, & Koordinator dihitung otomatis oleh Supabase!
+              Anda bisa <b>Upload File Excel/CSV</b> atau <b>Copy-Paste</b> langsung dari Excel PLN (Urutan kolom: <code>idpel | koked | nama | tarif | daya | alamat | lembar | rptag | rpbk</code>). Rumus Jumlah, Kode Petugas, & Koordinator dihitung otomatis oleh Supabase!
             </div>
             <div class="mb-2">
               <label class="form-label small fw-bold">Opsi A: Pilih File Excel (.xlsx / .csv)</label>
@@ -210,10 +210,10 @@ tr.clickable:hover td { filter: brightness(0.95); }
 
 <script>
 // ============================================================================
-// 1. KONFIGURASI SUPABASE (GANTI DENGAN URL & ANON KEY SUPABASE ANDA)
+// 1. KONFIGURASI SUPABASE
 // ============================================================================
-const SUPABASE_URL = " https://wnzedfyiublmzmjkzsrq.supabase.co ";
-const SUPABASE_KEY = " sb_publishable_g1WlECVLkTdNBMwL2QxWlA_gOu6l4VR ";
+const SUPABASE_URL = "https://wnzedfyiublmzmjkzsrq.supabase.co";
+const SUPABASE_KEY = "sb_publishable_g1WlECVLkTdNBMwL2QxWlA_gOu6l4VR";
 
 const db = supabase.createClient(SUPABASE_URL.trim(), SUPABASE_KEY.trim());
 const { jsPDF } = window.jspdf;
@@ -221,7 +221,6 @@ const { jsPDF } = window.jspdf;
 let allData = [], currentDetail = [], currentTitle = "", currentPetugas = "Semua", currentSheet = "lembar1";
 let historyStack = [], sortState = { key: null, asc: true };
 
-// Set nilai default tanggal hari ini di input modal
 document.getElementById("inputTglLunas").value = new Date().getDate();
 document.getElementById("inputTglEis").value = new Date().getDate();
 
@@ -264,7 +263,7 @@ function getDayFromTgl(tglStr) {
 }
 
 // ============================================================================
-// 2. FUNGSI TARIK DATA DARI SUPABASE (OTOMATIS BACA RIBUAN BARIS TANPA BATAS)
+// 2. FUNGSI TARIK DATA DARI SUPABASE
 // ============================================================================
 async function loadSheet(k) {
   currentSheet = k; historyStack = []; currentPetugas = "Semua"; 
@@ -297,7 +296,6 @@ async function loadSheet(k) {
       from += step;
     }
 
-    // Khusus Lembar 1: Jika semua tagihan diinput dari awal bulan, saring agar yang sudah lunas tanggal 1-20 tidak ikut jadi tunggakan Lembar 1
     if (k === 'lembar1') {
       fetchedRows = fetchedRows.filter(r => {
         let st = getStatusLunas(r);
@@ -309,7 +307,6 @@ async function loadSheet(k) {
 
     allData = fetchedRows;
 
-    // Cari waktu update paling baru dari database
     let latestTime = null;
     allData.forEach(r => {
       if (r.updated_at) {
@@ -331,7 +328,7 @@ async function loadSheet(k) {
 
     renderPetugas();
   } catch (err) {
-    view.innerHTML = `<div class="alert alert-danger"><b>Gagal memuat data Supabase:</b> ${err.message}<br><small>Pastikan SUPABASE_URL dan SUPABASE_KEY sudah diisi dengan benar di dalam file index.html.</small></div>`;
+    view.innerHTML = `<div class="alert alert-danger"><b>Gagal memuat data Supabase:</b> ${err.message}</div>`;
   }
 }
 
@@ -341,13 +338,12 @@ backBtn.onclick = () => {
   if (historyStack.length === 0) { backBtn.classList.add("d-none"); renderPetugas(); }
 };
 
-// Warna indikator yang lebih ramah mata
 function getWarnaProgress(persen, sisaLbr) {
-    if (sisaLbr === 0) return { bg: '#1e3a8a', text: 'white' }; // Biru Tua (Nihil)
+    if (sisaLbr === 0) return { bg: '#1e3a8a', text: 'white' };
     if (persen >= 100) return { bg: '#38bdf8', text: '#0f172a' }; 
-    if (persen >= 91) return { bg: '#bbf7d0', text: '#14532d' };  // Hijau Lembut
-    if (persen >= 61) return { bg: '#fef08a', text: '#713f12' };  // Kuning Lembut
-    if (persen >= 21) return { bg: '#fecaca', text: '#7f1d1d' };  // Merah Lembut
+    if (persen >= 91) return { bg: '#bbf7d0', text: '#14532d' };
+    if (persen >= 61) return { bg: '#fef08a', text: '#713f12' };
+    if (persen >= 21) return { bg: '#fecaca', text: '#7f1d1d' };
     return { bg: '#334155', text: 'white' };                    
 }
 
@@ -505,7 +501,6 @@ function renderPetugas() {
   let wGrandTotal = getWarnaProgress(totalProgress, sumSisaLbr);
   let globalTglNihil = sumSisaLbr === 0 ? (globalMaxTglLunas > 0 ? globalMaxTglLunas : 'SELESAI') : 'BELUM';
 
-  // Render Kartu Ringkasan di Atas Tabel
   document.getElementById("summaryArea").innerHTML = `
     <div class="col-6 col-md-3"><div class="summary-card"><div class="summary-label">Total Saldo Awal</div><div class="summary-value text-dark">${sumTotalLbr.toLocaleString("id-ID")} Lbr <span class="text-muted fw-normal small">(Rp ${sumTotalRp.toLocaleString("id-ID")})</span></div></div></div>
     <div class="col-6 col-md-3"><div class="summary-card"><div class="summary-label">Sisa Belum Lunas</div><div class="summary-value text-danger">${sumSisaLbr.toLocaleString("id-ID")} Lbr <span class="text-muted fw-normal small">(Rp ${sumSisaRp.toLocaleString("id-ID")})</span></div></div></div>
@@ -545,6 +540,7 @@ function renderPetugas() {
 function ekstrakDaftarIdpel(teks) {
   return teks.split(/[\r\n\t,; ]+/).map(s => s.trim()).filter(s => s.length >= 8 && !isNaN(s));
 }
+
 async function prosesFilePelunasanPln() {
   const fileEl = document.getElementById("fileLunasPln");
   const statusEl = document.getElementById("statusProsesModal");
@@ -561,13 +557,10 @@ async function prosesFilePelunasanPln() {
     const dataBuf = await file.arrayBuffer();
     const wb = XLSX.read(dataBuf);
     const sheet = wb.Sheets[wb.SheetNames[0]];
-    
-    // Baca seluruh baris sebagai array (agar otomatis melewati kop PLN di baris 1-7)
     const rows = XLSX.utils.sheet_to_json(sheet, { header: 1, defval: "" });
 
     let idxTgl = -1, idxIdpel = -1, startRow = 0;
 
-    // Cari posisi baris header yang memiliki kolom 'TglTransaksi' dan 'Idpel'
     for (let i = 0; i < Math.min(20, rows.length); i++) {
       const rowStr = rows[i].map(c => String(c).trim().toLowerCase());
       if (rowStr.includes("tgltransaksi") && rowStr.includes("idpel")) {
@@ -583,7 +576,6 @@ async function prosesFilePelunasanPln() {
       return;
     }
 
-    // Kelompokkan IDPEL berdasarkan tanggal (2 digit terakhir dari YYYYMMDD)
     const grupPerTanggal = {};
     let totalIdpelTerbaca = 0;
 
@@ -594,9 +586,8 @@ async function prosesFilePelunasanPln() {
       const rawIdpel = String(r[idxIdpel]).replace(/\.0$/, "").trim();
       const rawTgl = String(r[idxTgl]).replace(/\.0$/, "").trim();
 
-      // Validasi IDPEL (angka minimal 10 digit) dan TglTransaksi (YYYYMMDD = 8 digit)
       if (rawIdpel.length >= 10 && !isNaN(rawIdpel) && rawTgl.length >= 8) {
-        const hariLunas = String(parseInt(rawTgl.slice(-2), 10)); // Ambil 2 angka belakang (misal '21')
+        const hariLunas = String(parseInt(rawTgl.slice(-2), 10));
         if (!grupPerTanggal[hariLunas]) grupPerTanggal[hariLunas] = new Set();
         grupPerTanggal[hariLunas].add(rawIdpel);
       }
@@ -630,6 +621,7 @@ async function prosesFilePelunasanPln() {
   } catch (err) {
     statusEl.innerHTML = `<span class="text-danger">❌ Gagal memproses file: ${err.message}</span>`;
   }
+}
 
 async function prosesPelunasanHarian() {
   const tgl = document.getElementById("inputTglLunas").value.trim();
@@ -691,7 +683,6 @@ async function prosesInputDataAwal() {
     const jsonRaw = XLSX.utils.sheet_to_json(sheet, { defval: "" });
 
     jsonRaw.forEach(r => {
-      // Deteksi otomatis nama kolom dari PLN / Sheet
       const idpel = String(r.idpel || r.IDPEL || r.Idpel || Object.values(r)[0] || "").trim();
       if (idpel && !isNaN(idpel) && idpel.length >= 8) {
         rowsToInsert.push({
@@ -740,7 +731,6 @@ async function prosesInputDataAwal() {
     return;
   }
 
-  // Kirim bertahap per 1000 baris agar lancar
   const chunkSize = 1000;
   for (let i = 0; i < rowsToInsert.length; i += chunkSize) {
     const chunk = rowsToInsert.slice(i, i + chunkSize);
