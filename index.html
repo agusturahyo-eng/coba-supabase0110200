@@ -1,6 +1,9 @@
 <!DOCTYPE html>
 <html lang="id">
 <head>
+<meta charset="UTF-8"<!DOCTYPE html>
+<html lang="id">
+<head>
 <meta charset="UTF-8">
 <title>Rekap Tunggakan & Invoice ULP Tulung</title>
 <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -335,10 +338,10 @@ tr.clickable:hover td { filter: brightness(0.95); }
               <label class="form-label small fw-bold text-primary mb-1">1. Copas Data Sheet INVOICE Bulan Lalu (Tanpa Perlu Sortir Manual):</label>
               <div class="row g-1 mb-1">
                 <div class="col-7">
-                  <textarea id="textIdpelInvoiceManual" class="form-control form-control-sm" rows="2" placeholder="Paste kolom IDPEL Invoice bulan lalu di sini..."></textarea>
+                  <textarea id="textIdpelInvoiceManual" class="form-control form-control-sm" rows="2" placeholder="Paste IDPEL saja (atau blok 2 kolom IDPEL + TGL LUNAS langsung di sini)..."></textarea>
                 </div>
                 <div class="col-5">
-                  <textarea id="textTglLunasInvoiceLalu" class="form-control form-control-sm" rows="2" placeholder="Paste kolom TGL LUNAS bulan lalu (sejajar barisnya)..."></textarea>
+                  <textarea id="textTglLunasInvoiceLalu" class="form-control form-control-sm" rows="2" placeholder="Paste kolom TGL LUNAS bulan lalu (jika dipisah)..."></textarea>
                 </div>
               </div>
               <button class="btn btn-primary btn-sm fw-bold w-100" onclick="prosesTambahInvoiceManual()">➕ Simpan Invoice Bulan Lalu & Sortir Otomatis Sesuai Tgl Berangkat</button>
@@ -1425,6 +1428,7 @@ async function ubahOpsiInvoicePetugas(kode) {
   }
 }
 
+// FUNGSI TOMBOL INVOICE BULAN LALU (KIRIM BERTAHAP PER 500 BARIS + BACA SPASI/TAB OTOMATIS)
 async function prosesTambahInvoiceManual() {
   const rawIdpels = document.getElementById("textIdpelInvoiceManual").value.trim();
   const rawTgls = document.getElementById("textTglLunasInvoiceLalu").value.trim();
@@ -1438,30 +1442,49 @@ async function prosesTambahInvoiceManual() {
   let listTglLunas = [];
 
   linesIdpel.forEach((line, idx) => {
-    const parts = line.split("\t");
-    const idp = parts[0].trim();
-    if (idp.length >= 8 && !isNaN(idp)) {
+    const cleanLine = line.trim();
+    if (!cleanLine) return;
+    // Pisahkan dengan Tab ATAU Spasi (cocok untuk "524050211866   20260930" maupun 1 kolom IDPEL)
+    const parts = cleanLine.split(/\t|\s+/);
+    const idp = parts[0].replace(/[^0-9]/g, "").trim();
+    if (idp.length >= 8) {
       listIdpel.push(idp);
-      let tglVal = parts.length > 1 ? parts[1].trim() : (linesTgl[idx] ? linesTgl[idx].trim() : "BELUM LUNAS");
+      let tglVal = parts.length > 1 ? parts.slice(1).join(" ").trim() : (linesTgl[idx] ? linesTgl[idx].trim() : "BELUM LUNAS");
       if (!tglVal || tglVal === "-" || tglVal === "0") tglVal = "BELUM LUNAS";
       listTglLunas.push(tglVal);
     }
   });
 
-  if (listIdpel.length === 0) return;
+  if (listIdpel.length === 0) {
+    statusEl.innerHTML = `<span class="text-danger">⚠️ Tidak ditemukan nomor IDPEL yang valid!</span>`;
+    return;
+  }
 
-  statusEl.innerHTML = `<span class="text-primary">⏳ Menyimpan ${listIdpel.length} data Invoice Bulan Lalu beserta Tgl Lunasnya...</span>`;
-  const { data, error } = await db.rpc('tambah_invoice_lalu_lengkap', { 
-    p_idpels: listIdpel, 
-    p_tgl_lunas: listTglLunas 
-  });
+  try {
+    const chunkSize = 500;
+    let totalMasuk = 0;
 
-  if (error) statusEl.innerHTML = `<span class="text-danger">❌ Error: ${error.message}</span>`;
-  else {
-    statusEl.innerHTML = `<span class="text-success">✅ Berhasil! Dari ${listIdpel.length} IDPEL Invoice Bulan Lalu, sebanyak${data} masuk ke Invoice bulan ini (sisanya otomatis dihapus karena bulan lalu lunas sebelum Tgl Berangkat).</span>`;
+    for (let i = 0; i < listIdpel.length; i += chunkSize) {
+      const chunkIdpel = listIdpel.slice(i, i + chunkSize);
+      const chunkTgl = listTglLunas.slice(i, i + chunkSize);
+      const selesai = Math.min(i + chunkSize, listIdpel.length);
+
+      statusEl.innerHTML = `<span class="text-primary">⏳ Menyimpan & menyortir Invoice Bulan Lalu: <b>${selesai.toLocaleString("id-ID")} / ${listIdpel.length.toLocaleString("id-ID")}</b>...</span>`;
+
+      const { data, error } = await db.rpc('tambah_invoice_lalu_lengkap', { 
+        p_idpels: chunkIdpel, 
+        p_tgl_lunas: chunkTgl 
+      });
+      if (error) throw error;
+      totalMasuk += (data || 0);
+    }
+
+    statusEl.innerHTML = `<span class="text-success">✅ Berhasil! Dari ${listIdpel.length.toLocaleString("id-ID")} IDPEL Invoice Bulan Lalu, sebanyak <b>${totalMasuk.toLocaleString("id-ID")} pelanggan</b> masuk ke Invoice bulan ini (sisanya otomatis dihapus karena bulan lalu lunas sebelum Tgl Berangkat).</span>`;
     document.getElementById("textIdpelInvoiceManual").value = "";
     document.getElementById("textTglLunasInvoiceLalu").value = "";
     if (currentSheet === 'invoice') loadSheet('invoice');
+  } catch (err) {
+    statusEl.innerHTML = `<span class="text-danger">❌ Error: ${err.message}</span>`;
   }
 }
 
@@ -1470,13 +1493,21 @@ async function prosesTambahTunggakanL23Manual() {
   const statusEl = document.getElementById("statusProsesModal");
   if (idpels.length === 0) return;
 
-  statusEl.innerHTML = `<span class="text-primary">⏳ Menyimpan ${idpels.length} IDPEL Nunggak 2 & 3 Bulan Lalu...</span>`;
-  const { data, error } = await db.rpc('tambah_tunggakan_l23_lalu_manual', { p_idpels: idpels });
-  if (error) statusEl.innerHTML = `<span class="text-danger">❌ Error: ${error.message}</span>`;
-  else {
-    statusEl.innerHTML = `<span class="text-success">✅ Berhasil! ${data} IDPEL Nunggak 2 & 3 Bulan Lalu dimasukkan semua ke Invoice.</span>`;
+  try {
+    const chunkSize = 500;
+    let totalMasuk = 0;
+    for (let i = 0; i < idpels.length; i += chunkSize) {
+      const chunk = idpels.slice(i, i + chunkSize);
+      statusEl.innerHTML = `<span class="text-primary">⏳ Menyimpan Nunggak 2 & 3 Lalu (${Math.min(i + chunkSize, idpels.length)} /${idpels.length})...</span>`;
+      const { data, error } = await db.rpc('tambah_tunggakan_l23_lalu_manual', { p_idpels: chunk });
+      if (error) throw error;
+      totalMasuk += (data || 0);
+    }
+    statusEl.innerHTML = `<span class="text-success">✅ Berhasil! ${totalMasuk.toLocaleString("id-ID")} IDPEL Nunggak 2 & 3 Bulan Lalu dimasukkan semua ke Invoice.</span>`;
     document.getElementById("textIdpelTunggakanL23").value = "";
     if (currentSheet === 'invoice') loadSheet('invoice');
+  } catch (err) {
+    statusEl.innerHTML = `<span class="text-danger">❌ Error: ${err.message}</span>`;
   }
 }
 
@@ -1485,13 +1516,21 @@ async function prosesTambahTunggakanLaluManual() {
   const statusEl = document.getElementById("statusProsesModal");
   if (idpels.length === 0) return;
 
-  statusEl.innerHTML = `<span class="text-primary">⏳ Menyimpan ${idpels.length} IDPEL Nunggak L1 Bulan Lalu...</span>`;
-  const { data, error } = await db.rpc('tambah_tunggakan_lalu_manual', { p_idpels: idpels });
-  if (error) statusEl.innerHTML = `<span class="text-danger">❌ Error: ${error.message}</span>`;
-  else {
-    statusEl.innerHTML = `<span class="text-success">✅ Berhasil! ${data} IDPEL disimpan ke memori Tunggakan L1 Bulan Lalu.</span>`;
+  try {
+    const chunkSize = 500;
+    let totalMasuk = 0;
+    for (let i = 0; i < idpels.length; i += chunkSize) {
+      const chunk = idpels.slice(i, i + chunkSize);
+      statusEl.innerHTML = `<span class="text-primary">⏳ Menyimpan Nunggak L1 Lalu (${Math.min(i + chunkSize, idpels.length)} /${idpels.length})...</span>`;
+      const { data, error } = await db.rpc('tambah_tunggakan_lalu_manual', { p_idpels: chunk });
+      if (error) throw error;
+      totalMasuk += (data || 0);
+    }
+    statusEl.innerHTML = `<span class="text-success">✅ Berhasil! ${idpels.length.toLocaleString("id-ID")} IDPEL disimpan ke memori Tunggakan L1 Bulan Lalu (${totalMasuk.toLocaleString("id-ID")} aktif di Invoice sesuai centang petugas).</span>`;
     document.getElementById("textIdpelTunggakanLalu").value = "";
     if (currentSheet === 'invoice') loadSheet('invoice');
+  } catch (err) {
+    statusEl.innerHTML = `<span class="text-danger">❌ Error: ${err.message}</span>`;
   }
 }
 
@@ -1500,13 +1539,21 @@ async function prosesHapusInvoiceManual() {
   const statusEl = document.getElementById("statusProsesModal");
   if (idpels.length === 0) return;
 
-  statusEl.innerHTML = `<span class="text-primary">⏳ Menghapus ${idpels.length} IDPEL dari daftar Invoice...</span>`;
-  const { data, error } = await db.rpc('hapus_invoice_manual', { p_idpels: idpels });
-  if (error) statusEl.innerHTML = `<span class="text-danger">❌ Error: ${error.message}</span>`;
-  else {
-    statusEl.innerHTML = `<span class="text-success">✅ Berhasil mengeluarkan ${data} pelanggan dari tab Invoice.</span>`;
+  try {
+    const chunkSize = 500;
+    let totalHapus = 0;
+    for (let i = 0; i < idpels.length; i += chunkSize) {
+      const chunk = idpels.slice(i, i + chunkSize);
+      statusEl.innerHTML = `<span class="text-primary">⏳ Menghapus dari daftar Invoice (${Math.min(i + chunkSize, idpels.length)} /${idpels.length})...</span>`;
+      const { data, error } = await db.rpc('hapus_invoice_manual', { p_idpels: chunk });
+      if (error) throw error;
+      totalHapus += (data || 0);
+    }
+    statusEl.innerHTML = `<span class="text-success">✅ Berhasil mengeluarkan ${totalHapus.toLocaleString("id-ID")} pelanggan dari tab Invoice.</span>`;
     document.getElementById("textIdpelHapusInvoice").value = "";
     if (currentSheet === 'invoice') loadSheet('invoice');
+  } catch (err) {
+    statusEl.innerHTML = `<span class="text-danger">❌ Error: ${err.message}</span>`;
   }
 }
 
@@ -1640,7 +1687,7 @@ function perbaruiPreviewTeksAdmin() {
     previewEl.innerText = `✓ Pakai Admin: Tagihan otomatis ditambah Rp. ${nominal.toLocaleString("id-ID")} (Tanpa tulisan belum termasuk biaya admin)`;
   } else {
     previewEl.className = "mt-2 small fw-bold text-primary";
-    previewEl.innerText = `ℹ️ Tanpa Admin: Tagihan asli + muncul tulisan "(belum termasuk biaya admin)"`;
+    previewEl.innerText = `ℹ️️ Tanpa Admin: Tagihan asli + muncul tulisan "(belum termasuk biaya admin)"`;
   }
 }
 
@@ -1693,7 +1740,6 @@ async function eksekusiCetakF4() {
   const pakaiAdmin = (opsiAdmin === "pakai" && biayaAdmin > 0);
   const urutan = document.getElementById("selectUrutanCetak").value;
   let tglSuratRaw = document.getElementById("inputTglSuratCetak").value.trim();
-  // Pastikan ada spasi antara nama bulan dan tahun4 digit (misal "2 Oktober2026" -> "2 Oktober 2026")
   const tglSurat = tglSuratRaw.replace(/([a-zA-Z])(\d{4})\b/g, "$1 $2");
   const btnDownload = document.getElementById("btnDownloadPdfF4");
 
@@ -1782,12 +1828,10 @@ function gambarSatuSlotInvoiceF4(doc, r, yTop, slotH, pakaiAdmin, biayaAdmin, bu
   const teksAdmin = pakaiAdmin ? "" : " (belum termasuk biaya admin)";
   const garduBersih = formatGarduPendek(r.gardu);
 
-  // Garis Vertikal Pemisah Kiri & Kanan di X = 61mm
   doc.setLineWidth(0.3);
   doc.setLineDashPattern([], 0);
   doc.line(61, yTop + 3, 61, yTop + slotH - 3);
 
-  // Garis Potong Horizontal Putus-putus
   if (slotTopIndex(yTop, slotH) < 3) {
     doc.setLineDashPattern([1.5, 1.5], 0);
     doc.line(3, yTop + slotH, 212, yTop + slotH);
