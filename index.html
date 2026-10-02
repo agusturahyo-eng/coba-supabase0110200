@@ -1,9 +1,6 @@
 <!DOCTYPE html>
 <html lang="id">
 <head>
-<meta charset="UTF-8"<!DOCTYPE html>
-<html lang="id">
-<head>
 <meta charset="UTF-8">
 <title>Rekap Tunggakan & Invoice ULP Tulung</title>
 <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -86,7 +83,7 @@ tr.clickable:hover td { filter: brightness(0.95); }
 <body>
 <div class="container-fluid my-3">
 
-  <!-- BARIS MENU ATAS & TOMBOL ADMIN (TERSEMBUNYI SECARA DEFAULT) -->
+  <!-- BARIS MENU ATAS & TOMBOL ADMIN/CETAK (TERSEMBUNYI SECARA DEFAULT) -->
   <div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
     <ul class="nav nav-tabs border-0 mb-0">
       <li class="nav-item"><a class="nav-link active" id="tab-lembar1" onclick="paksaTampilLembar1=false; loadSheet('lembar1')">Lembar 1</a></li>
@@ -104,7 +101,7 @@ tr.clickable:hover td { filter: brightness(0.95); }
     </div>
   </div>
 
-  <!-- JUDUL (KLIK 5X UNTUK BUKA MENU ADMIN) & INFO UPDATE -->
+  <!-- JUDUL (KLIK 5X UNTUK BUKA MENU CETAK / ADMIN) & INFO UPDATE -->
   <div class="text-center mb-3">
     <h4 class="text-primary fw-bold mb-0 clickable" onclick="bukaPintuRahasia()">⚡ Rekap Tunggakan & Invoice ULP Tulung</h4>
     <div id="updateInfo" onclick="loadSheet(currentSheet);" class="d-inline-block text-secondary small mt-2 px-3 py-1 bg-white rounded-pill shadow-sm border clickable" title="Klik untuk Muat Ulang Data">
@@ -403,11 +400,12 @@ tr.clickable:hover td { filter: brightness(0.95); }
 
 <script>
 // ============================================================================
-// 1. KONFIGURASI SUPABASE & PIN RAHASIA ADMIN
+// 1. KONFIGURASI SUPABASE & PIN RAHASIA (ADMIN & TIM CETAK)
 // ============================================================================
 const SUPABASE_URL = "https://wnzedfyiublmzmjkzsrq.supabase.co";
 const SUPABASE_KEY = "sb_publishable_g1WlECVLkTdNBMwL2QxWlA_gOu6l4VR";
-const PIN_ADMIN = "123456789";
+const PIN_ADMIN = "123456789"; // PIN Lengkap: Buka Menu Admin + Tombol Cetak F4
+const PIN_CETAK = "12345";     // PIN Khusus 4 Orang Print: Hanya Buka Tombol Cetak F4
 
 const db = supabase.createClient(SUPABASE_URL.trim(), SUPABASE_KEY.trim());
 const { jsPDF } = window.jspdf;
@@ -416,6 +414,7 @@ let allData = [], currentDetail = [], currentTitle = "", currentPetugas = "Semua
 let historyStack = [], sortState = { key: null, asc: true };
 let daftarMasterPetugas = [];
 let paksaTampilLembar1 = false;
+let isPrinterUnlocked = false;
 
 let cacheFileBuffer = { input_awal: null, master_dil: null };
 let cacheFileName = { input_awal: "", master_dil: "" };
@@ -467,12 +466,18 @@ function bukaPintuRahasia() {
 
   if (hitungKlikJudul >= 5) {
     hitungKlikJudul = 0;
-    const inputPin = prompt("🔒 Masukkan PIN Admin:");
+    const inputPin = prompt("🔒 Masukkan PIN Akses:");
     if (inputPin === PIN_ADMIN) {
+      isPrinterUnlocked = true;
       document.getElementById("btnAdmin").classList.remove("d-none");
+      if (currentSheet === 'invoice') document.getElementById("btnCetakF4Utama").classList.remove("d-none");
       muatDaftarPetugasModal();
       const modalEl = new bootstrap.Modal(document.getElementById('adminModal'));
       modalEl.show();
+    } else if (inputPin === PIN_CETAK) {
+      isPrinterUnlocked = true;
+      if (currentSheet === 'invoice') document.getElementById("btnCetakF4Utama").classList.remove("d-none");
+      bukaModalCetakF4(currentPetugas || 'Semua');
     } else if (inputPin !== null) {
       alert("❌ PIN salah!");
     }
@@ -572,7 +577,7 @@ async function loadSheet(k) {
   backBtn.classList.add("d-none");
 
   const btnCetakUtama = document.getElementById("btnCetakF4Utama");
-  if (k === 'invoice') btnCetakUtama.classList.remove("d-none");
+  if (k === 'invoice' && isPrinterUnlocked) btnCetakUtama.classList.remove("d-none");
   else btnCetakUtama.classList.add("d-none");
 
   view.innerHTML = "<div class='text-center my-5'><div class='spinner-border text-primary'></div><p class='mt-2 text-muted small'>Mengambil data dari Supabase...</p></div>";
@@ -1444,7 +1449,6 @@ async function prosesTambahInvoiceManual() {
   linesIdpel.forEach((line, idx) => {
     const cleanLine = line.trim();
     if (!cleanLine) return;
-    // Pisahkan dengan Tab ATAU Spasi (cocok untuk "524050211866   20260930" maupun 1 kolom IDPEL)
     const parts = cleanLine.split(/\t|\s+/);
     const idp = parts[0].replace(/[^0-9]/g, "").trim();
     if (idp.length >= 8) {
@@ -1479,7 +1483,7 @@ async function prosesTambahInvoiceManual() {
       totalMasuk += (data || 0);
     }
 
-    statusEl.innerHTML = `<span class="text-success">✅ Berhasil! Dari ${listIdpel.length.toLocaleString("id-ID")} IDPEL Invoice Bulan Lalu, sebanyak <b>${totalMasuk.toLocaleString("id-ID")} pelanggan</b> masuk ke Invoice bulan ini (sisanya otomatis dihapus karena bulan lalu lunas sebelum Tgl Berangkat).</span>`;
+    statusEl.innerHTML = `<span class="text-success">✅ Berhasil! Dari ${listIdpel.length.toLocaleString("id-ID")} IDPEL Invoice Bulan Lalu, sebanyak <b>${totalMasuk.toLocaleString("id-ID")} pelanggan</b> masuk ke Invoice bulan ini (sisanya otomatis disembunyikan karena bulan lalu lunas sebelum Tgl Berangkat).</span>`;
     document.getElementById("textIdpelInvoiceManual").value = "";
     document.getElementById("textTglLunasInvoiceLalu").value = "";
     if (currentSheet === 'invoice') loadSheet('invoice');
@@ -1687,7 +1691,7 @@ function perbaruiPreviewTeksAdmin() {
     previewEl.innerText = `✓ Pakai Admin: Tagihan otomatis ditambah Rp. ${nominal.toLocaleString("id-ID")} (Tanpa tulisan belum termasuk biaya admin)`;
   } else {
     previewEl.className = "mt-2 small fw-bold text-primary";
-    previewEl.innerText = `ℹ️️ Tanpa Admin: Tagihan asli + muncul tulisan "(belum termasuk biaya admin)"`;
+    previewEl.innerText = `ℹ Tanpa Admin: Tagihan asli + muncul tulisan "(belum termasuk biaya admin)"`;
   }
 }
 
@@ -1965,7 +1969,7 @@ function openPetugas(k) {
     byDate[t].j++; byDate[t].rp += parseIDR(r.jumlah); 
   });
 
-  const btnCetakF4 = currentSheet === 'invoice' 
+  const btnCetakF4 = (currentSheet === 'invoice' && isPrinterUnlocked) 
     ? `<button class="btn btn-primary btn-sm fw-bold" onclick="bukaModalCetakF4('${k}')">🖨️ Cetak PDF F4 (4/Lembar) & Admin</button>` 
     : ``;
   
@@ -2013,7 +2017,7 @@ function openGlobal() {
     byDate[t].j++; byDate[t].rp += parseIDR(r.jumlah); 
   });
 
-  const btnCetakF4 = currentSheet === 'invoice' 
+  const btnCetakF4 = (currentSheet === 'invoice' && isPrinterUnlocked) 
     ? `<button class="btn btn-primary btn-sm fw-bold" onclick="bukaModalCetakF4('Semua')">🖨️ Cetak PDF F4 (4/Lembar) & Admin</button>` 
     : ``;
   
@@ -2066,7 +2070,7 @@ function detailGlobalLunas(t) { currentTitle = `Global_Lunas_${t}`; currentDetai
 
 function renderDetail() {
   sortState = { key: null, asc: true };
-  const btnCetakF4 = (currentSheet === 'invoice' && currentTitle === "Belum_Lunas")
+  const btnCetakF4 = (currentSheet === 'invoice' && currentTitle === "Belum_Lunas" && isPrinterUnlocked)
     ? `<button class="btn btn-primary btn-sm text-nowrap fw-bold" onclick="bukaModalCetakF4('${currentPetugas}')">🖨️ CETAK F4 (4/LBR)</button>`
     : ``;
 
