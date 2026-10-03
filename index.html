@@ -13,28 +13,28 @@
 <style>
 body { background: #f0f4f8; font-family: 'Segoe UI', system-ui, -apple-system, sans-serif; color: #1e293b; }
 .clickable { cursor: pointer; user-select: none; transition: background-color 0.15s; }
-tr.clickable:hover td { filter: brightness(0.95); }
+tr.clickable:hover td { filter: brightness(0.92); }
 .card.highlight { border: 2px solid #2563eb; box-shadow: 0 4px 12px rgba(37,99,235,0.18); }
-.card-body p { margin-bottom: 2px; line-height: 1.3; font-size: 0.85rem; }
+.card-body p { margin-bottom: 2px; line-height: 1.35; font-size: 0.85rem; }
 
 /* SUMMARY CARDS */
 .summary-card {
     background: #ffffff;
     border-radius: 10px;
-    border: 1px solid #e2e8f0;
+    border: 1px solid #cbd5e1;
     padding: 10px 14px;
-    box-shadow: 0 1px 3px rgba(0,0,0,0.04);
+    box-shadow: 0 1px 3px rgba(0,0,0,0.05);
 }
 .summary-label { font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.5px; color: #64748b; font-weight: 700; }
-.summary-value { font-size: 1.1rem; font-weight: 800; margin-top: 2px; }
+.summary-value { font-size: 1.08rem; font-weight: 800; margin-top: 2px; }
 
-/* TABEL REKAP */
+/* TABEL REKAP - WARNA SESUAI GAMBAR STANDAR ULP TULUNG */
 .table-rekap { border-collapse: separate; border-spacing: 0; background: white; }
 .table-rekap thead th {
-    background-color: #1e40af !important;
+    background-color: #0052cc !important;
     color: white !important;
-    border: 1px solid #1e3a8a !important;
-    font-weight: 600;
+    border: 1px solid #003d99 !important;
+    font-weight: 700;
     padding: 6px 6px !important;
 }
 .table-rekap td { 
@@ -73,9 +73,9 @@ tr.clickable:hover td { filter: brightness(0.95); }
     cursor: pointer;
 }
 .nav-tabs .nav-link.active {
-    color: #1d4ed8 !important;
+    color: #0052cc !important;
     background: transparent !important;
-    border-bottom: 3px solid #1d4ed8 !important;
+    border-bottom: 3px solid #0052cc !important;
 }
 .nav-tabs::-webkit-scrollbar { display: none; }
 </style>
@@ -104,12 +104,12 @@ tr.clickable:hover td { filter: brightness(0.95); }
   <!-- JUDUL (KLIK 5X UNTUK BUKA MENU CETAK / ADMIN) & INFO UPDATE -->
   <div class="text-center mb-3">
     <h4 class="text-primary fw-bold mb-0 clickable" onclick="bukaPintuRahasia()">⚡ Rekap Tunggakan & Invoice ULP Tulung</h4>
-    <div id="updateInfo" onclick="loadSheet(currentSheet);" class="d-inline-block text-secondary small mt-2 px-3 py-1 bg-white rounded-pill shadow-sm border clickable" title="Klik untuk Muat Ulang Data">
+    <div id="updateInfo" onclick="loadSheet(currentSheet, true);" class="d-inline-block text-secondary small mt-2 px-3 py-1 bg-white rounded-pill shadow-sm border clickable" title="Klik untuk Muat Ulang Data dari Server">
       Memuat koneksi database...
     </div>
   </div>
 
-  <!-- KARTU RINGKASAN (SUMMARY CARDS) -->
+  <!-- KARTU RINGKASAN (OTOMATIS MENYESUAIKAN SEMUA PETUGAS ATAU 1 PETUGAS) -->
   <div id="summaryArea" class="row g-2 mb-3"></div>
 
   <button id="backBtn" class="btn btn-secondary btn-sm mb-2 d-none fw-bold">⬅ Kembali</button>
@@ -121,7 +121,7 @@ tr.clickable:hover td { filter: brightness(0.95); }
   <div class="modal-dialog">
     <div class="modal-content">
       <div class="modal-header bg-success text-white py-2">
-        <h6 class="modal-title fw-bold">🖨️ Cetak Invoice Kertas F4 (1 Lembar = 4 Invoice)</h6>
+        <h6 class="modal-title fw-bold">🖨️️ Cetak Invoice Kertas F4 (1 Lembar = 4 Invoice)</h6>
         <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
       </div>
       <div class="modal-body small">
@@ -416,6 +416,10 @@ let daftarMasterPetugas = [];
 let paksaTampilLembar1 = false;
 let isPrinterUnlocked = false;
 
+// Cache memori per tab untuk menghemat bandwidth Supabase
+let sheetCache = {};
+const KOLOM_SELECT = "idpel,koked,nama,tarif,daya,alamat,lembar,rptag,rpbk,jumlah,gardu,no_kwh,kode,nama_petugas,koordinator,is_invoice,tgl_lunas,updated_at";
+
 let cacheFileBuffer = { input_awal: null, master_dil: null };
 let cacheFileName = { input_awal: "", master_dil: "" };
 
@@ -423,6 +427,14 @@ let cacheFileName = { input_awal: "", master_dil: "" };
 function formatGarduPendek(val) {
   if (!val) return "";
   return String(val).replace(/^52405/i, "").replace(/\b52405/gi, "").trim();
+}
+
+// Fungsi Pembersih Alamat: Pastikan menampilkan alamat dengan jelas
+function formatAlamatTampil(r) {
+  let al = String(r.alamat || "").trim();
+  let nm = String(r.nama || "").trim();
+  if (!al || al === "-") return "-";
+  return al;
 }
 
 async function siapkanFileKeMemori(inputEl, key) {
@@ -528,13 +540,18 @@ function getDayFromTgl(tglStr) {
 }
 
 // ============================================================================
-// 2. FUNGSI TARIK DATA DARI SUPABASE (DENGAN PENGUNCI TGL 1-20 UNTUK LEMBAR 1)
+// 2. FUNGSI TARIK DATA DARI SUPABASE (HEMAT BANDWIDTH + CACHE MEMORI)
 // ============================================================================
-async function ambilDataSheetDariSupabase(k) {
+async function ambilDataSheetDariSupabase(k, forceRefresh = false) {
   const tglHariIni = new Date().getDate();
 
   if (k === 'lembar1' && tglHariIni < 21 && !paksaTampilLembar1) {
     return [];
+  }
+
+  const cacheKey = k + (k === 'lembar1' ? '_' + paksaTampilLembar1 : '');
+  if (!forceRefresh && sheetCache[cacheKey]) {
+    return sheetCache[cacheKey];
   }
 
   let fetchedRows = [];
@@ -542,7 +559,7 @@ async function ambilDataSheetDariSupabase(k) {
   const step = 1000;
   
   while (true) {
-    let query = db.from('data_tunggakan').select('*').range(from, from + step - 1);
+    let query = db.from('data_tunggakan').select(KOLOM_SELECT).range(from, from + step - 1);
     
     if (k === 'lembar1') query = query.eq('lembar', 1);
     else if (k === 'lembar2') query = query.eq('lembar', 2);
@@ -566,10 +583,13 @@ async function ambilDataSheetDariSupabase(k) {
       return hari === null || hari >= 21;
     });
   }
+
+  sheetCache[cacheKey] = fetchedRows;
   return fetchedRows;
 }
 
-async function loadSheet(k) {
+async function loadSheet(k, forceRefresh = false) {
+  if (forceRefresh) sheetCache = {};
   currentSheet = k; historyStack = []; currentPetugas = "Semua"; 
   document.querySelectorAll(".nav-link").forEach(t => t.classList.remove("active"));
   const tabEl = document.getElementById("tab-" + k);
@@ -583,7 +603,7 @@ async function loadSheet(k) {
   view.innerHTML = "<div class='text-center my-5'><div class='spinner-border text-primary'></div><p class='mt-2 text-muted small'>Mengambil data dari Supabase...</p></div>";
   
   try {
-    allData = await ambilDataSheetDariSupabase(k);
+    allData = await ambilDataSheetDariSupabase(k, forceRefresh);
 
     let latestTime = null;
     allData.forEach(r => {
@@ -601,14 +621,14 @@ async function loadSheet(k) {
     }
 
     const waktuUpdateStr = latestTime 
-      ? latestTime.toLocaleString("id-ID", { day:'2-digit', month:'2-digit', year:'numeric', hour:'2-digit', minute:'2-digit' })
+      ? latestTime.toLocaleString("id-ID", { day:'2-digit', month:'2-digit', year:'numeric', hour:'2-digit', minute:'2-digit', second:'2-digit' })
       : "Belum Ada Data";
     const waktuBuka = new Date().toLocaleTimeString("id-ID", {hour: '2-digit', minute:'2-digit'});
 
     document.getElementById("updateInfo").innerHTML = `
-      🕒 <b>Update Database:</b> <span class="text-danger fw-bold">${waktuUpdateStr} WIB</span> 
+      🕒 Tgl Update: <span class="text-danger fw-bold">${waktuUpdateStr} WIB</span> 
       &nbsp;|&nbsp; 
-      🔄 <b>Direfresh:</b> <span class="text-primary fw-bold">${waktuBuka} WIB</span>
+      🔄 Halaman Direfresh: <span class="text-primary fw-bold">${waktuBuka} WIB</span>
     `;
 
     renderPetugas();
@@ -623,13 +643,14 @@ backBtn.onclick = () => {
   if (historyStack.length === 0) { backBtn.classList.add("d-none"); renderPetugas(); }
 };
 
+// WARNA REKAP PERSIS SESUAI GAMBAR STANDAR ULP TULUNG
 function getWarnaProgress(persen, sisaLbr) {
-    if (sisaLbr === 0) return { bg: '#1e3a8a', text: 'white' };
-    if (persen >= 100) return { bg: '#38bdf8', text: '#0f172a' }; 
-    if (persen >= 91) return { bg: '#bbf7d0', text: '#14532d' };
-    if (persen >= 61) return { bg: '#fef08a', text: '#713f12' };
-    if (persen >= 21) return { bg: '#fecaca', text: '#7f1d1d' };
-    return { bg: '#334155', text: 'white' };                    
+    if (sisaLbr === 0) return { bg: '#002060', text: '#ffffff' }; // Biru Dongker (Nihil / Selesai 0 Lembar)
+    if (persen >= 100) return { bg: '#00b0f0', text: '#000000' }; // Biru Muda / Cyan (>= 100%)
+    if (persen >= 91)  return { bg: '#92d050', text: '#000000' }; // Hijau Apel (91% - 99%)
+    if (persen >= 61)  return { bg: '#ffff00', text: '#000000' }; // Kuning Terang (61% - 90%)
+    if (persen >= 21)  return { bg: '#ff0000', text: '#ffffff' }; // Merah Terang (21% - 60%)
+    return { bg: '#000000', text: '#ffffff' };                    // Hitam Pekat (0% - 20%)
 }
 
 function hitungTargetLembar(sisaSaldoLembar, startDay, targetEndDay) {
@@ -640,10 +661,82 @@ function hitungTargetLembar(sisaSaldoLembar, startDay, targetEndDay) {
     return Math.ceil(sisaSaldoLembar / (targetEndDay - tglSekarang + 1));
 }
 
+// FUNGSI KARTU RINGKASAN DINAMIS (BISA SEMUA PETUGAS ATAU KHUSUS 1 PETUGAS)
+function updateSummaryCards(kodePetugas = "Semua") {
+  const sekarang = new Date();
+  const tglTerakhirBulanIni = new Date(sekarang.getFullYear(), sekarang.getMonth() + 1, 0).getDate();
+  const startDay = (currentSheet === 'lembar1') ? 21 : 1;
+  const targetEndDay = (currentSheet === 'lembar1') ? tglTerakhirBulanIni : 20;
+
+  const dataSumber = (kodePetugas === "Semua") ? allData : allData.filter(r => r.kode === kodePetugas);
+
+  let sumTotalLbr = 0, sumTotalRp = 0, sumSisaLbr = 0, sumSisaRp = 0;
+  const sisaPerPetugas = {};
+  let labelNamaPetugas = "Semua Petugas";
+
+  dataSumber.forEach(r => {
+    let rp = parseIDR(r.jumlah);
+    let st = getStatusLunas(r);
+    let pKey = r.kode || "TANPA-KODE";
+
+    if (kodePetugas !== "Semua" && r.nama_petugas) {
+      labelNamaPetugas = `${r.kode.toUpperCase()} - ${r.nama_petugas}`;
+    }
+
+    sumTotalLbr++;
+    sumTotalRp += rp;
+
+    if (!st.isLunas) {
+      sumSisaLbr++;
+      sumSisaRp += rp;
+      sisaPerPetugas[pKey] = (sisaPerPetugas[pKey] || 0) + 1;
+    }
+  });
+
+  let sumTargetHarian = 0;
+  Object.values(sisaPerPetugas).forEach(sisa => {
+    sumTargetHarian += hitungTargetLembar(sisa, startDay, targetEndDay);
+  });
+
+  let totalProgress = sumTotalLbr > 0 ? Math.round(((sumTotalLbr - sumSisaLbr) / sumTotalLbr) * 100) : 0;
+  let badgeFilter = kodePetugas === "Semua" 
+    ? `<span class="badge bg-secondary ms-1" style="font-size:0.65rem;">GLOBAL</span>` 
+    : `<span class="badge bg-primary ms-1" style="font-size:0.65rem;">${labelNamaPetugas}</span>`;
+
+  document.getElementById("summaryArea").innerHTML = `
+    <div class="col-6 col-md-3">
+      <div class="summary-card">
+        <div class="summary-label d-flex justify-content-between align-items-center"><span>Total Saldo Awal</span>${badgeFilter}</div>
+        <div class="summary-value text-dark">${sumTotalLbr.toLocaleString("id-ID")} Lbr <span class="text-muted fw-normal small">(Rp ${sumTotalRp.toLocaleString("id-ID")})</span></div>
+      </div>
+    </div>
+    <div class="col-6 col-md-3">
+      <div class="summary-card">
+        <div class="summary-label d-flex justify-content-between align-items-center"><span>Sisa Belum Lunas</span>${badgeFilter}</div>
+        <div class="summary-value text-danger">${sumSisaLbr.toLocaleString("id-ID")} Lbr <span class="text-muted fw-normal small">(Rp ${sumSisaRp.toLocaleString("id-ID")})</span></div>
+      </div>
+    </div>
+    <div class="col-6 col-md-3">
+      <div class="summary-card">
+        <div class="summary-label d-flex justify-content-between align-items-center"><span>Sudah Lunas</span>${badgeFilter}</div>
+        <div class="summary-value text-success">${(sumTotalLbr - sumSisaLbr).toLocaleString("id-ID")} Lbr <span class="text-muted fw-normal small">(Target Hari Ini: ${sumTargetHarian})</span></div>
+      </div>
+    </div>
+    <div class="col-6 col-md-3">
+      <div class="summary-card">
+        <div class="summary-label d-flex justify-content-between align-items-center"><span>Progres Capaian</span>${badgeFilter}</div>
+        <div class="summary-value text-primary">${totalProgress}%</div>
+        <div class="progress mt-1" style="height:6px;"><div class="progress-bar bg-primary" style="width:${totalProgress}%"></div></div>
+      </div>
+    </div>
+  `;
+}
+
 // ============================================================================
 // 3. RENDER TABEL UTAMA & KARTU RINGKASAN
 // ============================================================================
 function renderPetugas() {
+  currentPetugas = "Semua";
   const sekarang = new Date();
   const tglHariIni = sekarang.getDate();
 
@@ -657,7 +750,7 @@ function renderPetugas() {
               Daftar tunggakan <b>Lembar 1</b> baru akan ditampilkan secara otomatis mulai <b>Tanggal 21</b> (khusus pelanggan yang tidak lunas pada tanggal 1–20). Selama tanggal 1–20, setiap update Pelunasan Harian tetap otomatis memotong saldo Lembar 1 di database.
             </div>
           </div>
-          <button class="btn btn-outline-primary btn-sm fw-bold text-nowrap" onclick="paksaTampilLembar1=true; loadSheet('lembar1')">
+          <button class="btn btn-outline-primary btn-sm fw-bold text-nowrap" onclick="paksaTampilLembar1=true; loadSheet('lembar1', true)">
             👁️ Intip Semua Data Lembar 1
           </button>
         </div>
@@ -665,6 +758,9 @@ function renderPetugas() {
     view.innerHTML = "";
     return;
   }
+
+  // Tampilkan kartu ringkasan untuk Semua Petugas di halaman utama
+  updateSummaryCards("Semua");
 
   const map = {}; 
   const tglTerakhirBulanIni = new Date(sekarang.getFullYear(), sekarang.getMonth() + 1, 0).getDate();
@@ -791,7 +887,7 @@ function renderPetugas() {
         let targetSimulasi = sisaSimulasi > 0 ? (i >= targetEndDay ? sisaSimulasi : Math.ceil(sisaSimulasi / (targetEndDay - i + 1))) : 0;
         let persen = targetSimulasi > 0 ? Math.round((val / targetSimulasi) * 100) : (val > 0 ? 100 : 0);
 
-        let wHarian = (p.j_sisa === 0 && i >= p.max_tgl_lunas) ? { bg: '#1e3a8a', text: 'white' } : getWarnaProgress(persen, 1);
+        let wHarian = (p.j_sisa === 0 && i >= p.max_tgl_lunas) ? { bg: '#002060', text: '#ffffff' } : getWarnaProgress(persen, 1);
         rowHtml += `<td style="background-color: ${wHarian.bg}; color: ${wHarian.text};">${val}</td>`;
         sisaSimulasi -= val; 
     }
@@ -806,13 +902,6 @@ function renderPetugas() {
   let totalProgress = Math.round(((sumTotalLbr - sumSisaLbr) / sumTotalLbr) * 100) || 0;
   let wGrandTotal = getWarnaProgress(totalProgress, sumSisaLbr);
   let globalTglNihil = sumSisaLbr === 0 ? (globalMaxTglLunas > 0 ? globalMaxTglLunas : 'SELESAI') : 'BELUM';
-
-  document.getElementById("summaryArea").innerHTML = `
-    <div class="col-6 col-md-3"><div class="summary-card"><div class="summary-label">Total Saldo Awal</div><div class="summary-value text-dark">${sumTotalLbr.toLocaleString("id-ID")} Lbr <span class="text-muted fw-normal small">(Rp ${sumTotalRp.toLocaleString("id-ID")})</span></div></div></div>
-    <div class="col-6 col-md-3"><div class="summary-card"><div class="summary-label">Sisa Belum Lunas</div><div class="summary-value text-danger">${sumSisaLbr.toLocaleString("id-ID")} Lbr <span class="text-muted fw-normal small">(Rp ${sumSisaRp.toLocaleString("id-ID")})</span></div></div></div>
-    <div class="col-6 col-md-3"><div class="summary-card"><div class="summary-label">Sudah Lunas</div><div class="summary-value text-success">${(sumTotalLbr - sumSisaLbr).toLocaleString("id-ID")} Lbr <span class="text-muted fw-normal small">(Target Hari Ini: ${sumTargetHarian})</span></div></div></div>
-    <div class="col-6 col-md-3"><div class="summary-card"><div class="summary-label">Progres Total</div><div class="summary-value text-primary">${totalProgress}%</div><div class="progress mt-1" style="height:6px;"><div class="progress-bar bg-primary" style="width:${totalProgress}%"></div></div></div></div>
-  `;
 
   h += `<tr class="fw-bold clickable" style="background-color: #e0f2fe;" onclick="openGlobal()">
       <td colspan="4" class="text-center freeze-col" style="background-color: #e0f2fe;">JUMLAH KESELURUHAN</td>
@@ -830,7 +919,7 @@ function renderPetugas() {
       let val = sumHarianGlobal[i] || 0;
       let targetSimulasi = globalSisaSimulasi > 0 ? (i >= targetEndDay ? globalSisaSimulasi : Math.ceil(globalSisaSimulasi / (targetEndDay - i + 1))) : 0;
       let persen = targetSimulasi > 0 ? Math.round((val / targetSimulasi) * 100) : (val > 0 ? 100 : 0);
-      let wTotalHarian = (sumSisaLbr === 0 && i >= globalMaxTglLunas) ? { bg: '#1e3a8a', text: 'white' } : getWarnaProgress(persen, 1);
+      let wTotalHarian = (sumSisaLbr === 0 && i >= globalMaxTglLunas) ? { bg: '#002060', text: '#ffffff' } : getWarnaProgress(persen, 1);
       h += `<td style="background-color: ${wTotalHarian.bg}; color: ${wTotalHarian.text};">${val}</td>`;
       globalSisaSimulasi -= val;
   }
@@ -923,7 +1012,7 @@ async function prosesFilePelunasanPln() {
 
     statusEl.innerHTML = `<span class="text-success">✅ Selesai! Dari ${totalIdpelTerbaca} IDPEL di file (Tgl ${daftarTanggal[0]} s/d ${daftarTanggal[daftarTanggal.length - 1]}), sebanyak ${totalTerupdate} data berhasil diupdate menjadi LUNAS!</span>`;
     fileEl.value = "";
-    loadSheet(currentSheet);
+    loadSheet(currentSheet, true);
 
   } catch (err) {
     statusEl.innerHTML = `<span class="text-danger">❌ Gagal memproses file: ${err.message}</span>`;
@@ -948,7 +1037,7 @@ async function prosesPelunasanHarian() {
   } else {
     statusEl.innerHTML = `<span class="text-success">✅ Berhasil! ${data} pelanggan ditandai LUNAS pada tanggal ${tgl}.</span>`;
     document.getElementById("textIdpelLunas").value = "";
-    loadSheet(currentSheet);
+    loadSheet(currentSheet, true);
   }
 }
 
@@ -970,7 +1059,7 @@ async function prosesCekEis() {
   } else {
     statusEl.innerHTML = `<span class="text-success">✅ Selesai! ${data} pelanggan yang sudah tidak ada di EIS otomatis LUNAS tanggal ${tgl}.</span>`;
     document.getElementById("textIdpelEis").value = "";
-    loadSheet(currentSheet);
+    loadSheet(currentSheet, true);
   }
 }
 
@@ -1037,13 +1126,16 @@ async function prosesInputDataAwal() {
         idxIdpel  = findCol(["IDPEL", "ID PELANGGAN"], 2);
         idxKoked  = findCol(["KOKED", "KDDK", "KODE KEDUDUKAN"], -1);
         idxNama   = findCol(["NAMA", "NAMA PELANGGAN"], 3);
-        idxAlamat = findCol(["ALAMAT"], 4);
-        idxGardu  = findCol(["GARDU", "NOMOR GARDU"], 7);
+        idxAlamat = findCol(["ALAMAT", "ALAMAT PELANGGAN", "PNJ", "NAMAPNJ"], -1);
+        idxGardu  = findCol(["GARDU", "NOMOR GARDU", "KODE GARDU"], 7);
         idxTarif  = findCol(["TARIF", "TARIP", "TRF"], 8);
         idxDaya   = findCol(["DAYA"], 9);
         idxLembar = findCol(["LEMBAR", "LBR"], 14);
         idxRptag  = findCol(["RPTAG", "RP TAG", "TAGIHAN"], 25);
         idxRpbk   = findCol(["RPBK", "RP BK", "BK", "DENDA"], 26);
+
+        // Pastikan idxAlamat tidak sama dengan idxNama
+        if (idxAlamat === idxNama) idxAlamat = -1;
       } else {
         const sampleCol0 = String(rows[0][0] || "").trim();
         if (sampleCol0.length >= 11) {
@@ -1066,13 +1158,20 @@ async function prosesInputDataAwal() {
 
         const idpelClean = rawIdpel.replace(/[^0-9]/g, "");
         if (idpelClean.length >= 10) {
+          const namaVal = idxNama >= 0 ? String(r[idxNama] ?? "").trim() : "";
+          let alamatVal = idxAlamat >= 0 ? String(r[idxAlamat] ?? "").trim() : "";
+          // Jika di file input alamat sama persis dengan nama, kosongkan agar fungsi SQL mengambil alamat asli dari dataplg3
+          if (alamatVal && namaVal && alamatVal.toUpperCase() === namaVal.toUpperCase()) {
+            alamatVal = "";
+          }
+
           rowsToInsert.push({
             idpel: idpelClean,
             koked: idxKoked >= 0 ? String(r[idxKoked] ?? "").trim() : "",
-            nama: idxNama >= 0 ? String(r[idxNama] ?? "").trim() : "",
+            nama: namaVal,
             tarif: idxTarif >= 0 ? String(r[idxTarif] ?? "").trim() : "",
             daya: idxDaya >= 0 ? (parseInt(String(r[idxDaya] ?? "0").replace(/[^0-9]/g, ""), 10) || 0) : 0,
-            alamat: idxAlamat >= 0 ? String(r[idxAlamat] ?? "").trim() : "",
+            alamat: alamatVal,
             lembar: idxLembar >= 0 ? (parseInt(String(r[idxLembar] ?? "1").replace(/[^0-9]/g, ""), 10) || 1) : 1,
             rptag: idxRptag >= 0 ? parseIDR(r[idxRptag]) : 0,
             rpbk: idxRpbk >= 0 ? parseIDR(r[idxRpbk]) : 0,
@@ -1160,7 +1259,7 @@ async function prosesInputDataAwal() {
     document.getElementById("textCopasPln").value = "";
     fileEl.value = "";
     cacheFileBuffer.input_awal = null;
-    loadSheet(currentSheet);
+    loadSheet(currentSheet, true);
 
   } catch (err) {
     if (String(err.message).includes("could not be read")) {
@@ -1216,7 +1315,7 @@ async function prosesUpdateMasterDil() {
     const idxIdpel = findIdx(["IDPEL", "ID PELANGGAN", "ID PEL"], 0);
     const idxKddk  = findIdx(["KDDK", "KOKED", "KODE KEDUDUKAN"], 1);
     const idxNama  = findIdx(["NAMA", "NAMA PELANGGAN"], 2);
-    const idxAlamat= findIdx(["ALAMAT", "ALAMAT PELANGGAN"], 3);
+    const idxAlamat= findIdx(["ALAMAT", "ALAMAT PELANGGAN", "NAMAPNJ", "PNJ"], 3);
     const idxTarif = findIdx(["TARIF", "TARIP", "TRF"], 4);
     const idxDaya  = findIdx(["DAYA"], 5);
     const idxGardu = findIdx(["NOMOR GARDU", "GARDU", "NOGARDU", "KODE GARDU"], 6);
@@ -1273,7 +1372,7 @@ async function prosesUpdateMasterDil() {
     statusEl.innerHTML = `<span class="text-success">✅ Selesai! ${totalBerhasil.toLocaleString("id-ID")} data teknis & KDDK berhasil diperbarui (Perubahan KDDK otomatis memindahkan petugas di data_tunggakan!).</span>`;
     fileEl.value = "";
     cacheFileBuffer.master_dil = null;
-    loadSheet(currentSheet);
+    loadSheet(currentSheet, true);
 
   } catch (err) {
     statusEl.innerHTML = `<span class="text-danger">❌ Gagal mengupdate DIL: ${err.message}</span>`;
@@ -1315,8 +1414,7 @@ async function prosesUpdateMasterPb() {
 
         const idxId   = findCol(["IDPEL", "ID PELANGGAN"], 0);
         const idxNm   = findCol(["NAMA", "NAMA PELANGGAN"], 1);
-        // PENTING: Jika di file (seperti DPM) tidak ada kolom ALAMAT, jangan paksa ambil kolom lain (-1)!
-        const idxAl   = findCol(["ALAMAT", "ALAMAT PELANGGAN"], -1);
+        const idxAl   = findCol(["ALAMAT", "ALAMAT PELANGGAN", "NAMAPNJ", "PNJ"], -1);
         const idxKddk = findCol(["KDDK", "KOKED", "KODE KEDUDUKAN"], -1);
         const idxTrf  = findCol(["TARIF", "TARIP", "TRF"], -1);
         const idxDaya = findCol(["DAYA"], -1);
@@ -1326,10 +1424,14 @@ async function prosesUpdateMasterPb() {
           if (!r || r.length < 2) continue;
           const idpel = String(r[idxId] ?? "").replace(/\.0$/, "").replace(/[^0-9]/g, "").trim();
           if (idpel.length >= 10) {
+            const nmVal = idxNm >= 0 ? String(r[idxNm] ?? "").trim() : "";
+            let alVal = (idxAl >= 0 && idxAl !== idxNm) ? String(r[idxAl] ?? "").trim() : "";
+            if (alVal && nmVal && alVal.toUpperCase() === nmVal.toUpperCase()) alVal = "";
+
             rowsPb.push({
               "IDPEL": idpel,
-              "NAMA": idxNm >= 0 ? String(r[idxNm] ?? "").trim() : "",
-              "ALAMAT": idxAl >= 0 ? String(r[idxAl] ?? "").trim() : "",
+              "NAMA": nmVal,
+              "ALAMAT": alVal,
               "KDDK": idxKddk >= 0 ? String(r[idxKddk] ?? "").trim() : "",
               "TARIF": idxTrf >= 0 ? String(r[idxTrf] ?? "").trim() : "",
               "DAYA": idxDaya >= 0 ? String(r[idxDaya] ?? "").replace(/\.0$/, "").trim() : "0"
@@ -1344,10 +1446,13 @@ async function prosesUpdateMasterPb() {
         if (cols.length >= 2) {
           const idpel = cols[0].replace(/\.0$/, "").replace(/[^0-9]/g, "").trim();
           if (idpel.length >= 10) {
+            const nmVal = (cols[1] || "").trim();
+            let alVal = (cols[2] || "").trim();
+            if (alVal && nmVal && alVal.toUpperCase() === nmVal.toUpperCase()) alVal = "";
             rowsPb.push({
               "IDPEL": idpel,
-              "NAMA": (cols[1] || "").trim(),
-              "ALAMAT": (cols[2] || "").trim()
+              "NAMA": nmVal,
+              "ALAMAT": alVal
             });
           }
         }
@@ -1362,23 +1467,22 @@ async function prosesUpdateMasterPb() {
       return;
     }
 
-    // Kirim per 1000 baris (dengan Index baru di dataplg3, 1000 baris selesai dalam 0,2 detik!)
     const chunkSize = 1000;
     let totalBerhasil = 0;
     for (let i = 0; i < rowsPb.length; i += chunkSize) {
       const chunk = rowsPb.slice(i, i + chunkSize);
       const selesai = Math.min(i + chunkSize, rowsPb.length);
       const persen = Math.round((selesai / rowsPb.length) * 100);
-      statusEl.innerHTML = `<span class="text-primary">⏳ Menyimpan Nama Asli ke dataplg3 & data_tunggakan: <b>${selesai.toLocaleString("id-ID")} / ${rowsPb.length.toLocaleString("id-ID")}</b> (${persen}%)...</span>`;
+      statusEl.innerHTML = `<span class="text-primary">⏳ Menyimpan Nama & Alamat Asli ke dataplg3 & data_tunggakan: <b>${selesai.toLocaleString("id-ID")} / ${rowsPb.length.toLocaleString("id-ID")}</b> (${persen}%)...</span>`;
       const { data, error } = await db.rpc('update_master_dari_pb', { p_data: chunk });
       if (error) throw error;
       totalBerhasil += (data || 0);
     }
 
-    statusEl.innerHTML = `<span class="text-success">✅ Selesai! ${totalBerhasil.toLocaleString("id-ID")} Nama Pelanggan asli berhasil disimpan ke dataplg3 & langsung disinkronkan!</span>`;
+    statusEl.innerHTML = `<span class="text-success">✅ Selesai! ${totalBerhasil.toLocaleString("id-ID")} Nama & Alamat Pelanggan asli berhasil disimpan ke dataplg3 & langsung disinkronkan!</span>`;
     document.getElementById("textCopasPb").value = "";
     fileEl.value = "";
-    loadSheet(currentSheet);
+    loadSheet(currentSheet, true);
 
   } catch (err) {
     statusEl.innerHTML = `<span class="text-danger">❌ Gagal mengupdate DPM/Pasang Baru: ${err.message}</span>`;
@@ -1393,7 +1497,7 @@ async function prosesGantiBulan() {
   if (error) statusEl.innerHTML = `<span class="text-danger">❌ Error: ${error.message}</span>`;
   else {
     statusEl.innerHTML = `<span class="text-success">✅ Tabel berhasil direset! Memori Invoice (beserta Tanggal Lunas bulan lalu) telah diamankan.</span>`;
-    loadSheet(currentSheet);
+    loadSheet(currentSheet, true);
   }
 }
 
@@ -1452,8 +1556,9 @@ async function ubahOpsiInvoicePetugas(kode) {
 
   if (error) statusEl.innerHTML = `<span class="text-danger">❌ Error: ${error.message}</span>`;
   else {
+    delete sheetCache['invoice'];
     statusEl.innerHTML = `<span class="text-success">✅ Invoice ${kode.toUpperCase()} diperbarui! (Yang bulan lalu lunas sebelum Tgl ${tglBerangkat} otomatis dihapus, Nunggak 2 & 3 tetap masuk semua).</span>`;
-    if (currentSheet === 'invoice') loadSheet('invoice');
+    if (currentSheet === 'invoice') loadSheet('invoice', true);
   }
 }
 
@@ -1507,10 +1612,11 @@ async function prosesTambahInvoiceManual() {
       totalMasuk += (data || 0);
     }
 
+    delete sheetCache['invoice'];
     statusEl.innerHTML = `<span class="text-success">✅ Berhasil! Dari ${listIdpel.length.toLocaleString("id-ID")} IDPEL Invoice Bulan Lalu, sebanyak <b>${totalMasuk.toLocaleString("id-ID")} pelanggan</b> masuk ke Invoice bulan ini (sisanya otomatis disembunyikan karena bulan lalu lunas sebelum Tgl Berangkat).</span>`;
     document.getElementById("textIdpelInvoiceManual").value = "";
     document.getElementById("textTglLunasInvoiceLalu").value = "";
-    if (currentSheet === 'invoice') loadSheet('invoice');
+    if (currentSheet === 'invoice') loadSheet('invoice', true);
   } catch (err) {
     statusEl.innerHTML = `<span class="text-danger">❌ Error: ${err.message}</span>`;
   }
@@ -1531,9 +1637,10 @@ async function prosesTambahTunggakanL23Manual() {
       if (error) throw error;
       totalMasuk += (data || 0);
     }
+    delete sheetCache['invoice'];
     statusEl.innerHTML = `<span class="text-success">✅ Berhasil! ${totalMasuk.toLocaleString("id-ID")} IDPEL Nunggak 2 & 3 Bulan Lalu dimasukkan semua ke Invoice.</span>`;
     document.getElementById("textIdpelTunggakanL23").value = "";
-    if (currentSheet === 'invoice') loadSheet('invoice');
+    if (currentSheet === 'invoice') loadSheet('invoice', true);
   } catch (err) {
     statusEl.innerHTML = `<span class="text-danger">❌ Error: ${err.message}</span>`;
   }
@@ -1554,9 +1661,10 @@ async function prosesTambahTunggakanLaluManual() {
       if (error) throw error;
       totalMasuk += (data || 0);
     }
+    delete sheetCache['invoice'];
     statusEl.innerHTML = `<span class="text-success">✅ Berhasil! ${idpels.length.toLocaleString("id-ID")} IDPEL disimpan ke memori Tunggakan L1 Bulan Lalu (${totalMasuk.toLocaleString("id-ID")} aktif di Invoice sesuai centang petugas).</span>`;
     document.getElementById("textIdpelTunggakanLalu").value = "";
-    if (currentSheet === 'invoice') loadSheet('invoice');
+    if (currentSheet === 'invoice') loadSheet('invoice', true);
   } catch (err) {
     statusEl.innerHTML = `<span class="text-danger">❌ Error: ${err.message}</span>`;
   }
@@ -1577,9 +1685,10 @@ async function prosesHapusInvoiceManual() {
       if (error) throw error;
       totalHapus += (data || 0);
     }
+    delete sheetCache['invoice'];
     statusEl.innerHTML = `<span class="text-success">✅ Berhasil mengeluarkan ${totalHapus.toLocaleString("id-ID")} pelanggan dari tab Invoice.</span>`;
     document.getElementById("textIdpelHapusInvoice").value = "";
-    if (currentSheet === 'invoice') loadSheet('invoice');
+    if (currentSheet === 'invoice') loadSheet('invoice', true);
   } catch (err) {
     statusEl.innerHTML = `<span class="text-danger">❌ Error: ${err.message}</span>`;
   }
@@ -1748,7 +1857,7 @@ async function terapkanPerubahanOpsiDariModalCetak() {
       if (error) throw error;
     }
 
-    allData = await ambilDataSheetDariSupabase('invoice');
+    allData = await ambilDataSheetDariSupabase('invoice', true);
     perbaruiInfoJumlahCetakF4(kode);
     if (currentSheet === 'invoice') renderPetugas();
 
@@ -1785,7 +1894,7 @@ async function eksekusiCetakF4() {
     btnDownload.innerText = "⏳ Mengambil data IDPEL dari Supabase...";
 
     try {
-      const { data, error } = await db.from('data_tunggakan').select('*').in('idpel', idpels);
+      const { data, error } = await db.from('data_tunggakan').select(KOLOM_SELECT).in('idpel', idpels);
       if (error) throw error;
 
       if (!data || data.length === 0) {
@@ -1802,7 +1911,7 @@ async function eksekusiCetakF4() {
       if (ikutMasukTab) {
         await db.from('data_tunggakan').update({ is_invoice: true }).in('idpel', idpels);
         if (currentSheet === 'invoice') {
-          allData = await ambilDataSheetDariSupabase('invoice');
+          allData = await ambilDataSheetDariSupabase('invoice', true);
           renderPetugas();
         }
       }
@@ -1977,6 +2086,9 @@ function slotTopIndex(yTop, slotH) {
 // ============================================================================
 function openPetugas(k) {
   currentPetugas = k; pushView(renderPetugas);
+  // Perbarui kartu ringkasan di atas khusus untuk petugas yang dipilih
+  updateSummaryCards(k);
+
   const data = allData.filter(r => r.kode === k);
   let displayName = data.length > 0 ? (data[0].nama_petugas || k) : k;
   
@@ -2028,6 +2140,8 @@ function openPetugas(k) {
 
 function openGlobal() {
   currentPetugas = "Semua"; pushView(renderPetugas);
+  updateSummaryCards("Semua");
+
   const lunas = allData.filter(r => getStatusLunas(r).isLunas);
   const belum = allData.filter(r => !getStatusLunas(r).isLunas);
   const byDate = {};
@@ -2094,11 +2208,13 @@ function detailGlobalLunas(t) { currentTitle = `Global_Lunas_${t}`; currentDetai
 
 function renderDetail() {
   sortState = { key: null, asc: true };
+  updateSummaryCards(currentPetugas || "Semua");
+
   const btnCetakF4 = (currentSheet === 'invoice' && currentTitle === "Belum_Lunas" && isPrinterUnlocked)
     ? `<button class="btn btn-primary btn-sm text-nowrap fw-bold" onclick="bukaModalCetakF4('${currentPetugas}')">🖨️ CETAK F4 (4/LBR)</button>`
     : ``;
 
-  view.innerHTML = `<h6 class="text-center fw-bold small text-uppercase">${currentTitle.replace(/_/g,' ')}</h6><div class="d-flex mb-2 gap-1"><input id="search" class="form-control form-control-sm" placeholder="Cari IDPEL / Nama / Koked...">${btnCetakF4}<button class="btn btn-success btn-sm text-nowrap fw-bold" onclick="exportExcel()">📥 DOWNLOAD DETAIL</button></div><div id="tableArea"></div>`;
+  view.innerHTML = `<h6 class="text-center fw-bold small text-uppercase">${currentTitle.replace(/_/g,' ')}</h6><div class="d-flex mb-2 gap-1"><input id="search" class="form-control form-control-sm" placeholder="Cari IDPEL / Nama / Alamat / Koked...">${btnCetakF4}<button class="btn btn-success btn-sm text-nowrap fw-bold" onclick="exportExcel()">📥 DOWNLOAD DETAIL</button></div><div id="tableArea"></div>`;
   document.getElementById("search").oninput = e => {
     const t = e.target.value.toLowerCase();
     drawTable(currentDetail.filter(r => Object.values(r).some(v => String(v).toLowerCase().includes(t))));
@@ -2117,18 +2233,27 @@ function drawTable(data) {
     drawTable(sorted);
   };
   const icon = (k) => sortState.key === k ? (sortState.asc ? ' ▲' : ' ▼') : '';
-  let h = `<div class="table-responsive"><table class="table table-sm table-bordered table-striped bg-white" style="font-size:0.75rem"><thead class="table-primary text-nowrap"><tr><th class="clickable text-start" onclick="triggerSort('idpel')">IDPEL${icon('idpel')}</th><th class="clickable text-start" onclick="triggerSort('nama')">Nama${icon('nama')}</th><th class="clickable text-center" onclick="triggerSort('koked')">Koked${icon('koked')}</th><th class="clickable text-end" onclick="triggerSort('jumlah')">Rp${icon('jumlah')}</th></tr></thead><tbody>`;
-  data.forEach(r => { h += `<tr class="clickable" onclick="showCardsByData('${r.idpel}')"><td class="text-start">${r.idpel}</td><td class="text-start fw-semibold">${r.nama}</td><td class="text-center">${r.koked}</td><td class="text-end fw-bold">${parseIDR(r.jumlah).toLocaleString("id-ID")}</td></tr>`; });
+  let h = `<div class="table-responsive"><table class="table table-sm table-bordered table-striped bg-white" style="font-size:0.75rem"><thead class="table-primary text-nowrap"><tr><th class="clickable text-start" onclick="triggerSort('idpel')">IDPEL${icon('idpel')}</th><th class="clickable text-start" onclick="triggerSort('nama')">Nama${icon('nama')}</th><th class="clickable text-start" onclick="triggerSort('alamat')">Alamat${icon('alamat')}</th><th class="clickable text-center" onclick="triggerSort('koked')">Koked${icon('koked')}</th><th class="clickable text-end" onclick="triggerSort('jumlah')">Rp${icon('jumlah')}</th></tr></thead><tbody>`;
+  data.forEach(r => { h += `<tr class="clickable" onclick="showCardsByData('${r.idpel}')"><td class="text-start">${r.idpel}</td><td class="text-start fw-semibold">${r.nama}</td><td class="text-start text-muted">${formatAlamatTampil(r)}</td><td class="text-center">${r.koked}</td><td class="text-end fw-bold">${parseIDR(r.jumlah).toLocaleString("id-ID")}</td></tr>`; });
   document.getElementById("tableArea").innerHTML = h + `</tbody></table></div>`;
 }
 
 function showCardsByData(id) {
   pushView(renderDetail);
+  updateSummaryCards(currentPetugas || "Semua");
+
   let h = "";
   currentDetail.forEach(r => {
+    const alamatTampil = formatAlamatTampil(r);
+    const garduPendek = formatGarduPendek(r.gardu);
+    const infoTeknis = [
+      garduPendek ? `Gardu: ${garduPendek}` : "",
+      r.no_kwh ? `No.KWH: ${r.no_kwh}` : ""
+    ].filter(Boolean).join(" | ");
+
     h += `<div class="card mb-2 ${r.idpel === id?'highlight':''}" id="card-${r.idpel}"><div class="card-body p-2">
       <div class="d-flex justify-content-between"><b class="fs-6">${r.nama}</b> <span class="badge bg-secondary">${r.koked}</span></div>
-      <p class="text-muted mb-1">${r.idpel} | ${r.tarif}/${r.daya} | ${r.alamat || '-'}</p>
+      <p class="text-muted mb-1">${r.idpel} | ${r.tarif}/${r.daya} | 📍 <b class="text-dark">${alamatTampil}</b>${infoTeknis ? ' | ' + infoTeknis : ''}</p>
       <div class="d-flex justify-content-between align-items-center mt-2">
         <b class="text-danger fs-6">Rp. ${parseIDR(r.jumlah).toLocaleString("id-ID")}</b>
         <div class="d-flex gap-1">
