@@ -363,7 +363,7 @@ tr.clickable:hover td { filter: brightness(0.95); }
             </div>
           </div>
 
-          <!-- TAB 5: UPDATE MASTER PELANGGAN (dataplg3) DARI DIL & PASANG BARU -->
+          <!-- TAB 5: UPDATE MASTER PELANGGAN (dataplg3) DARI DIL & DPM / PASANG BARU -->
           <div class="tab-pane fade" id="pane-master">
             <!-- BAGIAN A: UPDATE DARI DATA DIL (SELAIN NAMA & ALAMAT) -->
             <div class="p-2 border border-primary rounded mb-3 bg-light">
@@ -375,17 +375,17 @@ tr.clickable:hover td { filter: brightness(0.95); }
               <button class="btn btn-primary btn-sm fw-bold w-100" onclick="prosesUpdateMasterDil()">🔄 Proses & Update Data Teknis DIL ke dataplg3</button>
             </div>
 
-            <!-- BAGIAN B: UPDATE NAMA & ALAMAT DARI DATA PASANG BARU / BALIK NAMA -->
+            <!-- BAGIAN B: UPDATE NAMA & ALAMAT DARI DATA DPM / PASANG BARU / BALIK NAMA -->
             <div class="p-2 border border-success rounded bg-light">
-              <h6 class="fw-bold text-success mb-1">B. Update Nama & Alamat Asli dari Data Pasang Baru (PB) / Perubahan Nama</h6>
+              <h6 class="fw-bold text-success mb-1">B. Update Nama & Alamat Asli dari Data DPM / Pasang Baru (PB) / Perubahan Nama</h6>
               <div class="small text-muted mb-2">
-                Khusus untuk mengisi/memperbarui <b>Nama dan Alamat asli</b> pelanggan di <code>dataplg3</code> tanpa menghapus data teknis DIL-nya. Bisa lewat pilih file Excel/CSV atau Copy-Paste langsung di bawah:
+                Khusus untuk mengisi/memperbarui <b>Nama dan Alamat asli</b> pelanggan di <code>dataplg3</code> tanpa menghapus data teknis DIL-nya (mendukung penuh file <b>DPM</b> maupun file <b>Pasang Baru</b>):
               </div>
-              <label class="form-label small fw-bold mb-1">Opsi 1: Pilih File Excel/CSV Pasang Baru (yang ada kolom IDPEL, NAMA, ALAMAT):</label>
+              <label class="form-label small fw-bold mb-1">Opsi 1: Pilih File Excel/CSV DPM atau Pasang Baru:</label>
               <input type="file" id="fileMasterPb" class="form-control form-control-sm mb-2" accept=".xlsx, .xls, .csv">
               
-              <label class="form-label small fw-bold mb-1">Opsi 2: Atau Copy-Paste 3 Kolom dari Excel (<code>IDPEL | NAMA | ALAMAT</code>):</label>
-              <textarea id="textCopasPb" class="form-control form-control-sm mb-2" rows="3" placeholder="Copy 3 kolom (IDPEL, NAMA, ALAMAT) dari Excel Pasang Baru lalu Paste di sini..."></textarea>
+              <label class="form-label small fw-bold mb-1">Opsi 2: Atau Copy-Paste Kolom dari Excel (<code>IDPEL | NAMA | ALAMAT</code>):</label>
+              <textarea id="textCopasPb" class="form-control form-control-sm mb-2" rows="3" placeholder="Copy kolom (IDPEL, NAMA, ALAMAT) dari Excel lalu Paste di sini..."></textarea>
               <button class="btn btn-success btn-sm fw-bold w-100" onclick="prosesUpdateMasterPb()">✨ Simpan Nama & Alamat Asli ke dataplg3</button>
             </div>
           </div>
@@ -921,7 +921,7 @@ async function prosesFilePelunasanPln() {
       totalTerupdate += (data || 0);
     }
 
-    statusEl.innerHTML = `<span class="text-success">✅ Selesai! Dari ${totalIdpelTerbaca} IDPEL di file (Tgl${daftarTanggal[0]} s/d ${daftarTanggal[daftarTanggal.length - 1]}), sebanyak${totalTerupdate} data berhasil diupdate menjadi LUNAS!</span>`;
+    statusEl.innerHTML = `<span class="text-success">✅ Selesai! Dari ${totalIdpelTerbaca} IDPEL di file (Tgl ${daftarTanggal[0]} s/d ${daftarTanggal[daftarTanggal.length - 1]}), sebanyak ${totalTerupdate} data berhasil diupdate menjadi LUNAS!</span>`;
     fileEl.value = "";
     loadSheet(currentSheet);
 
@@ -946,7 +946,7 @@ async function prosesPelunasanHarian() {
   if (error) {
     statusEl.innerHTML = `<span class="text-danger">❌ Error: ${error.message}</span>`;
   } else {
-    statusEl.innerHTML = `<span class="text-success">✅ Berhasil! ${data} pelanggan ditandai LUNAS pada tanggal${tgl}.</span>`;
+    statusEl.innerHTML = `<span class="text-success">✅ Berhasil! ${data} pelanggan ditandai LUNAS pada tanggal ${tgl}.</span>`;
     document.getElementById("textIdpelLunas").value = "";
     loadSheet(currentSheet);
   }
@@ -968,7 +968,7 @@ async function prosesCekEis() {
   if (error) {
     statusEl.innerHTML = `<span class="text-danger">❌ Error: ${error.message}</span>`;
   } else {
-    statusEl.innerHTML = `<span class="text-success">✅ Selesai! ${data} pelanggan yang sudah tidak ada di EIS otomatis LUNAS tanggal${tgl}.</span>`;
+    statusEl.innerHTML = `<span class="text-success">✅ Selesai! ${data} pelanggan yang sudah tidak ada di EIS otomatis LUNAS tanggal ${tgl}.</span>`;
     document.getElementById("textIdpelEis").value = "";
     loadSheet(currentSheet);
   }
@@ -1172,7 +1172,7 @@ async function prosesInputDataAwal() {
 }
 
 // ============================================================================
-// FUNGSI UPDATE TABEL MASTER (dataplg3) DARI DIL & PASANG BARU (MODE CEPAT)
+// FUNGSI UPDATE TABEL MASTER (dataplg3) DARI DIL & DPM / PASANG BARU
 // ============================================================================
 async function prosesUpdateMasterDil() {
   const fileEl = document.getElementById("fileMasterDil");
@@ -1289,7 +1289,7 @@ async function prosesUpdateMasterPb() {
 
   try {
     if (fileEl.files.length > 0) {
-      statusEl.innerHTML = `<span class="text-primary">⏳ Membaca file Pasang Baru...</span>`;
+      statusEl.innerHTML = `<span class="text-primary">⏳ Membaca file DPM / Pasang Baru...</span>`;
       await new Promise(r => setTimeout(r, 80));
       const file = fileEl.files[0];
       const dataBuf = await file.arrayBuffer();
@@ -1298,20 +1298,41 @@ async function prosesUpdateMasterPb() {
       const rows = XLSX.utils.sheet_to_json(sheet, { header: 1, defval: "" });
 
       if (rows.length > 0) {
-        const headers = rows[0].map(h => String(h || "").trim().toUpperCase());
-        let idxId = headers.indexOf("IDPEL"); if (idxId === -1) idxId = 0;
-        let idxNm = headers.indexOf("NAMA"); if (idxNm === -1) idxNm = 1;
-        let idxAl = headers.indexOf("ALAMAT"); if (idxAl === -1) idxAl = 2;
+        let headerRowIdx = 0;
+        for (let i = 0; i < Math.min(10, rows.length); i++) {
+          const rStr = rows[i].map(c => String(c || "").trim().toUpperCase());
+          if (rStr.includes("IDPEL")) { headerRowIdx = i; break; }
+        }
 
-        for (let i = 0; i < rows.length; i++) {
+        const headers = rows[headerRowIdx].map(h => String(h || "").trim().toUpperCase().replace(/[_-]/g, " "));
+        const findCol = (names, fallback) => {
+          for (const n of names) {
+            const idx = headers.indexOf(n);
+            if (idx !== -1) return idx;
+          }
+          return fallback;
+        };
+
+        const idxId   = findCol(["IDPEL", "ID PELANGGAN"], 0);
+        const idxNm   = findCol(["NAMA", "NAMA PELANGGAN"], 1);
+        // PENTING: Jika di file (seperti DPM) tidak ada kolom ALAMAT, jangan paksa ambil kolom lain (-1)!
+        const idxAl   = findCol(["ALAMAT", "ALAMAT PELANGGAN"], -1);
+        const idxKddk = findCol(["KDDK", "KOKED", "KODE KEDUDUKAN"], -1);
+        const idxTrf  = findCol(["TARIF", "TARIP", "TRF"], -1);
+        const idxDaya = findCol(["DAYA"], -1);
+
+        for (let i = headerRowIdx + 1; i < rows.length; i++) {
           const r = rows[i];
           if (!r || r.length < 2) continue;
           const idpel = String(r[idxId] ?? "").replace(/\.0$/, "").replace(/[^0-9]/g, "").trim();
           if (idpel.length >= 10) {
             rowsPb.push({
               "IDPEL": idpel,
-              "NAMA": String(r[idxNm] ?? "").trim(),
-              "ALAMAT": String(r[idxAl] ?? "").trim()
+              "NAMA": idxNm >= 0 ? String(r[idxNm] ?? "").trim() : "",
+              "ALAMAT": idxAl >= 0 ? String(r[idxAl] ?? "").trim() : "",
+              "KDDK": idxKddk >= 0 ? String(r[idxKddk] ?? "").trim() : "",
+              "TARIF": idxTrf >= 0 ? String(r[idxTrf] ?? "").trim() : "",
+              "DAYA": idxDaya >= 0 ? String(r[idxDaya] ?? "").replace(/\.0$/, "").trim() : "0"
             });
           }
         }
@@ -1332,7 +1353,7 @@ async function prosesUpdateMasterPb() {
         }
       });
     } else {
-      statusEl.innerHTML = `<span class="text-danger">⚠️ Pilih file Pasang Baru atau Paste 3 kolom (IDPEL | NAMA | ALAMAT) terlebih dahulu!</span>`;
+      statusEl.innerHTML = `<span class="text-danger">⚠️ Pilih file DPM / Pasang Baru atau Paste kolom (IDPEL | NAMA | ALAMAT) terlebih dahulu!</span>`;
       return;
     }
 
@@ -1341,23 +1362,26 @@ async function prosesUpdateMasterPb() {
       return;
     }
 
+    // Kirim per 1000 baris (dengan Index baru di dataplg3, 1000 baris selesai dalam 0,2 detik!)
     const chunkSize = 1000;
     let totalBerhasil = 0;
     for (let i = 0; i < rowsPb.length; i += chunkSize) {
       const chunk = rowsPb.slice(i, i + chunkSize);
-      statusEl.innerHTML = `<span class="text-primary">⏳ Menyimpan Nama & Alamat asli ke dataplg3 (${Math.min(i + chunkSize, rowsPb.length)} /${rowsPb.length})...</span>`;
+      const selesai = Math.min(i + chunkSize, rowsPb.length);
+      const persen = Math.round((selesai / rowsPb.length) * 100);
+      statusEl.innerHTML = `<span class="text-primary">⏳ Menyimpan Nama Asli ke dataplg3 & data_tunggakan: <b>${selesai.toLocaleString("id-ID")} / ${rowsPb.length.toLocaleString("id-ID")}</b> (${persen}%)...</span>`;
       const { data, error } = await db.rpc('update_master_dari_pb', { p_data: chunk });
       if (error) throw error;
       totalBerhasil += (data || 0);
     }
 
-    statusEl.innerHTML = `<span class="text-success">✅ Selesai! ${totalBerhasil.toLocaleString("id-ID")} Nama & Alamat asli berhasil disimpan ke dataplg3 & langsung disinkronkan!</span>`;
+    statusEl.innerHTML = `<span class="text-success">✅ Selesai! ${totalBerhasil.toLocaleString("id-ID")} Nama Pelanggan asli berhasil disimpan ke dataplg3 & langsung disinkronkan!</span>`;
     document.getElementById("textCopasPb").value = "";
     fileEl.value = "";
     loadSheet(currentSheet);
 
   } catch (err) {
-    statusEl.innerHTML = `<span class="text-danger">❌ Gagal mengupdate Pasang Baru: ${err.message}</span>`;
+    statusEl.innerHTML = `<span class="text-danger">❌ Gagal mengupdate DPM/Pasang Baru: ${err.message}</span>`;
   }
 }
 
@@ -1389,7 +1413,7 @@ async function muatDaftarPetugasModal() {
         <div class="d-flex justify-content-between align-items-center bg-white p-2 border rounded gap-1">
           <div class="form-check form-switch mb-0 text-truncate" title="Centang jika ditambah Nunggak L1 Bulan Lalu">
             <input class="form-check-input ms-0 me-1" type="checkbox" id="chk-${p.kode}" ${p.tambah_tunggakan_ke_invoice ? 'checked' : ''} onchange="ubahOpsiInvoicePetugas('${p.kode}')">
-            <label class="form-check-label fw-bold" for="chk-${p.kode}" style="font-size:0.74rem;">${p.kode.toUpperCase()} -${p.nama_petugas}</label>
+            <label class="form-check-label fw-bold" for="chk-${p.kode}" style="font-size:0.74rem;">${p.kode.toUpperCase()} - ${p.nama_petugas}</label>
           </div>
           <div class="d-flex align-items-center gap-1 flex-shrink-0">
             <span class="text-muted" style="font-size:0.68rem;" title="Tanggal Berangkat Invoice">Tgl:</span>
@@ -1408,7 +1432,7 @@ function simpanBiayaAdminDariTab4(kode) {
   setBiayaAdminPetugas(kode, nominal);
   const statusEl = document.getElementById("statusProsesModal");
   if (nominal > 0) {
-    statusEl.innerHTML = `<span class="text-success">✅ Biaya Admin petugas ${kode.toUpperCase()} disetel: Rp.${nominal.toLocaleString("id-ID")} (Tanpa tulisan belum termasuk admin).</span>`;
+    statusEl.innerHTML = `<span class="text-success">✅ Biaya Admin petugas ${kode.toUpperCase()} disetel: Rp. ${nominal.toLocaleString("id-ID")} (Tanpa tulisan belum termasuk admin).</span>`;
   } else {
     statusEl.innerHTML = `<span class="text-primary">ℹ️ Petugas ${kode.toUpperCase()} disetel Tanpa Biaya Admin (Muncul tulisan belum termasuk biaya admin).</span>`;
   }
@@ -1419,7 +1443,7 @@ async function ubahOpsiInvoicePetugas(kode) {
   const tglBerangkat = parseInt(document.getElementById(`tglb-${kode}`).value || 15, 10);
   const statusEl = document.getElementById("statusProsesModal");
 
-  statusEl.innerHTML = `<span class="text-primary">⏳ Menyortir daftar Invoice petugas ${kode.toUpperCase()} (Tgl Berangkat:${tglBerangkat})...</span>`;
+  statusEl.innerHTML = `<span class="text-primary">⏳ Menyortir daftar Invoice petugas ${kode.toUpperCase()} (Tgl Berangkat: ${tglBerangkat})...</span>`;
   const { error } = await db.rpc('setel_invoice_petugas', { 
     p_kode_petugas: kode, 
     p_tambah_tunggakan: isChecked,
@@ -1428,7 +1452,7 @@ async function ubahOpsiInvoicePetugas(kode) {
 
   if (error) statusEl.innerHTML = `<span class="text-danger">❌ Error: ${error.message}</span>`;
   else {
-    statusEl.innerHTML = `<span class="text-success">✅ Invoice ${kode.toUpperCase()} diperbarui! (Yang bulan lalu lunas sebelum Tgl${tglBerangkat} otomatis dihapus, Nunggak 2 & 3 tetap masuk semua).</span>`;
+    statusEl.innerHTML = `<span class="text-success">✅ Invoice ${kode.toUpperCase()} diperbarui! (Yang bulan lalu lunas sebelum Tgl ${tglBerangkat} otomatis dihapus, Nunggak 2 & 3 tetap masuk semua).</span>`;
     if (currentSheet === 'invoice') loadSheet('invoice');
   }
 }
@@ -1502,7 +1526,7 @@ async function prosesTambahTunggakanL23Manual() {
     let totalMasuk = 0;
     for (let i = 0; i < idpels.length; i += chunkSize) {
       const chunk = idpels.slice(i, i + chunkSize);
-      statusEl.innerHTML = `<span class="text-primary">⏳ Menyimpan Nunggak 2 & 3 Lalu (${Math.min(i + chunkSize, idpels.length)} /${idpels.length})...</span>`;
+      statusEl.innerHTML = `<span class="text-primary">⏳ Menyimpan Nunggak 2 & 3 Lalu (${Math.min(i + chunkSize, idpels.length)} / ${idpels.length})...</span>`;
       const { data, error } = await db.rpc('tambah_tunggakan_l23_lalu_manual', { p_idpels: chunk });
       if (error) throw error;
       totalMasuk += (data || 0);
@@ -1525,7 +1549,7 @@ async function prosesTambahTunggakanLaluManual() {
     let totalMasuk = 0;
     for (let i = 0; i < idpels.length; i += chunkSize) {
       const chunk = idpels.slice(i, i + chunkSize);
-      statusEl.innerHTML = `<span class="text-primary">⏳ Menyimpan Nunggak L1 Lalu (${Math.min(i + chunkSize, idpels.length)} /${idpels.length})...</span>`;
+      statusEl.innerHTML = `<span class="text-primary">⏳ Menyimpan Nunggak L1 Lalu (${Math.min(i + chunkSize, idpels.length)} / ${idpels.length})...</span>`;
       const { data, error } = await db.rpc('tambah_tunggakan_lalu_manual', { p_idpels: chunk });
       if (error) throw error;
       totalMasuk += (data || 0);
@@ -1548,7 +1572,7 @@ async function prosesHapusInvoiceManual() {
     let totalHapus = 0;
     for (let i = 0; i < idpels.length; i += chunkSize) {
       const chunk = idpels.slice(i, i + chunkSize);
-      statusEl.innerHTML = `<span class="text-primary">⏳ Menghapus dari daftar Invoice (${Math.min(i + chunkSize, idpels.length)} /${idpels.length})...</span>`;
+      statusEl.innerHTML = `<span class="text-primary">⏳ Menghapus dari daftar Invoice (${Math.min(i + chunkSize, idpels.length)} / ${idpels.length})...</span>`;
       const { data, error } = await db.rpc('hapus_invoice_manual', { p_idpels: chunk });
       if (error) throw error;
       totalHapus += (data || 0);
@@ -1592,7 +1616,7 @@ async function bukaModalCetakF4(kodePetugas) {
 
   const skrg = new Date();
   const namaBulan = ["Januari", "Februari", "Maret", "April", "Mei", "Juni", "Juli", "Agustus", "September", "Oktober", "November", "Desember"];
-  document.getElementById("inputTglSuratCetak").value = `${skrg.getDate()} ${namaBulan[skrg.getMonth()]}${skrg.getFullYear()}`;
+  document.getElementById("inputTglSuratCetak").value = `${skrg.getDate()} ${namaBulan[skrg.getMonth()]} ${skrg.getFullYear()}`;
 
   if (daftarMasterPetugas.length === 0) {
     const { data } = await db.from('master_petugas').select('*').order('kode');
@@ -1602,7 +1626,7 @@ async function bukaModalCetakF4(kodePetugas) {
   const selPetugas = document.getElementById("selectPetugasCetakF4");
   let optHtml = `<option value="Semua">Semua Petugas</option>`;
   daftarMasterPetugas.forEach(p => {
-    optHtml += `<option value="${p.kode}">${p.kode.toUpperCase()} -${p.nama_petugas}</option>`;
+    optHtml += `<option value="${p.kode}">${p.kode.toUpperCase()} - ${p.nama_petugas}</option>`;
   });
   selPetugas.innerHTML = optHtml;
   selPetugas.value = kodePetugas || "Semua";
@@ -1807,7 +1831,7 @@ async function eksekusiCetakF4() {
   const doc = new jsPDF({ orientation: "portrait", unit: "mm", format: [215, 330] });
   const skrg = new Date();
   const namaBulan = ["Januari", "Februari", "Maret", "April", "Mei", "Juni", "Juli", "Agustus", "September", "Oktober", "November", "Desember"];
-  const bulanTagihan = `${namaBulan[skrg.getMonth()]}${skrg.getFullYear()}`;
+  const bulanTagihan = `${namaBulan[skrg.getMonth()]} ${skrg.getFullYear()}`;
 
   const slotHeight = 82.5;
 
