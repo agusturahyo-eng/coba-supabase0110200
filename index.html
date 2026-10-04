@@ -15,7 +15,7 @@ body { background: #f0f4f8; font-family: 'Segoe UI', system-ui, -apple-system, s
 .clickable { cursor: pointer; user-select: none; transition: background-color 0.15s; }
 tr.clickable:hover td { filter: brightness(0.92); }
 .card.highlight { border: 2px solid #2563eb; box-shadow: 0 4px 12px rgba(37,99,235,0.18); }
-.card-body p { margin-bottom: 2px; line-height: 1.35; font-size: 0.85rem; }
+.card-body p { margin-bottom: 2px; line-height: 1.3; font-size: 0.85rem; }
 
 /* SUMMARY CARDS */
 .summary-card {
@@ -121,7 +121,7 @@ tr.clickable:hover td { filter: brightness(0.92); }
   <div class="modal-dialog">
     <div class="modal-content">
       <div class="modal-header bg-success text-white py-2">
-        <h6 class="modal-title fw-bold">🖨️️ Cetak Invoice Kertas F4 (1 Lembar = 4 Invoice)</h6>
+        <h6 class="modal-title fw-bold">🖨️ Cetak Invoice Kertas F4 (1 Lembar = 4 Invoice)</h6>
         <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
       </div>
       <div class="modal-body small">
@@ -379,13 +379,13 @@ tr.clickable:hover td { filter: brightness(0.92); }
             <div class="p-2 border border-success rounded bg-light">
               <h6 class="fw-bold text-success mb-1">B. Update Nama & Alamat Asli dari Data DPM / Pasang Baru (PB) / Perubahan Nama</h6>
               <div class="small text-muted mb-2">
-                Khusus untuk mengisi/memperbarui <b>Nama dan Alamat asli</b> pelanggan di <code>dataplg3</code> tanpa menghapus data teknis DIL-nya (mendukung penuh file <b>DPM</b> maupun file <b>Pasang Baru</b>):
+                Khusus untuk mengisi/memperbarui <b>Nama saja, Alamat saja, atau Keduanya</b> di <code>dataplg3</code> tanpa menghapus data teknis DIL-nya (mendukung penuh file <b>DPM</b> maupun file <b>Pasang Baru</b>):
               </div>
-              <label class="form-label small fw-bold mb-1">Opsi 1: Pilih File Excel/CSV DPM atau Pasang Baru:</label>
+              <label class="form-label small fw-bold mb-1">Opsi 1: Pilih File Excel/CSV DPM, Pasang Baru, atau Master Alamat:</label>
               <input type="file" id="fileMasterPb" class="form-control form-control-sm mb-2" accept=".xlsx, .xls, .csv">
               
               <label class="form-label small fw-bold mb-1">Opsi 2: Atau Copy-Paste Kolom dari Excel (<code>IDPEL | NAMA | ALAMAT</code>):</label>
-              <textarea id="textCopasPb" class="form-control form-control-sm mb-2" rows="3" placeholder="Copy kolom (IDPEL, NAMA, ALAMAT) dari Excel lalu Paste di sini..."></textarea>
+              <textarea id="textCopasPb" class="form-control form-control-sm mb-2" rows="3" placeholder="Copy kolom (IDPEL, NAMA, ALAMAT) atau (IDPEL, NAMA) atau (IDPEL, ALAMAT) dari Excel lalu Paste di sini..."></textarea>
               <button class="btn btn-success btn-sm fw-bold w-100" onclick="prosesUpdateMasterPb()">✨ Simpan Nama & Alamat Asli ke dataplg3</button>
             </div>
           </div>
@@ -423,18 +423,17 @@ const KOLOM_SELECT = "idpel,koked,nama,tarif,daya,alamat,lembar,rptag,rpbk,jumla
 let cacheFileBuffer = { input_awal: null, master_dil: null };
 let cacheFileName = { input_awal: "", master_dil: "" };
 
-// Fungsi Pemendek Gardu/Tiang: Otomatis hapus awalan "52405" agar tidak kepanjangan
+// Fungsi Pemendek Gardu/Tiang: Hapus awalan "52405" DAN bersihkan jika ada Nomor HP (08.../628.../***) yang nyasar
 function formatGarduPendek(val) {
   if (!val) return "";
-  return String(val).replace(/^52405/i, "").replace(/\b52405/gi, "").trim();
-}
-
-// Fungsi Pembersih Alamat: Pastikan menampilkan alamat dengan jelas
-function formatAlamatTampil(r) {
-  let al = String(r.alamat || "").trim();
-  let nm = String(r.nama || "").trim();
-  if (!al || al === "-") return "-";
-  return al;
+  let s = String(val)
+    .replace(/^52405/i, "")
+    .replace(/\b52405/gi, "")
+    .replace(/(^|\s|\/)(08|628|\+62)[0-9\*]{5,}/gi, "")
+    .replace(/^\s*\/\s*/, "")
+    .replace(/\s*\/\s*$/, "")
+    .trim();
+  return s;
 }
 
 async function siapkanFileKeMemori(inputEl, key) {
@@ -661,7 +660,7 @@ function hitungTargetLembar(sisaSaldoLembar, startDay, targetEndDay) {
     return Math.ceil(sisaSaldoLembar / (targetEndDay - tglSekarang + 1));
 }
 
-// FUNGSI KARTU RINGKASAN DINAMIS (BISA SEMUA PETUGAS ATAU KHUSUS 1 PETUGAS)
+// FUNGSI KARTU RINGKASAN DINAMIS (SEMUA PETUGAS ATAU KHUSUS 1 PETUGAS)
 function updateSummaryCards(kodePetugas = "Semua") {
   const sekarang = new Date();
   const tglTerakhirBulanIni = new Date(sekarang.getFullYear(), sekarang.getMonth() + 1, 0).getDate();
@@ -700,7 +699,7 @@ function updateSummaryCards(kodePetugas = "Semua") {
 
   let totalProgress = sumTotalLbr > 0 ? Math.round(((sumTotalLbr - sumSisaLbr) / sumTotalLbr) * 100) : 0;
   let badgeFilter = kodePetugas === "Semua" 
-    ? `<span class="badge bg-secondary ms-1" style="font-size:0.65rem;">GLOBAL</span>` 
+    ? `<span class="badge bg-secondary ms-1" style="font-size:0.65rem;">SEMUA PETUGAS</span>` 
     : `<span class="badge bg-primary ms-1" style="font-size:0.65rem;">${labelNamaPetugas}</span>`;
 
   document.getElementById("summaryArea").innerHTML = `
@@ -1134,7 +1133,6 @@ async function prosesInputDataAwal() {
         idxRptag  = findCol(["RPTAG", "RP TAG", "TAGIHAN"], 25);
         idxRpbk   = findCol(["RPBK", "RP BK", "BK", "DENDA"], 26);
 
-        // Pastikan idxAlamat tidak sama dengan idxNama
         if (idxAlamat === idxNama) idxAlamat = -1;
       } else {
         const sampleCol0 = String(rows[0][0] || "").trim();
@@ -1160,9 +1158,16 @@ async function prosesInputDataAwal() {
         if (idpelClean.length >= 10) {
           const namaVal = idxNama >= 0 ? String(r[idxNama] ?? "").trim() : "";
           let alamatVal = idxAlamat >= 0 ? String(r[idxAlamat] ?? "").trim() : "";
-          // Jika di file input alamat sama persis dengan nama, kosongkan agar fungsi SQL mengambil alamat asli dari dataplg3
+          let garduVal = idxGardu >= 0 ? String(r[idxGardu] ?? "").trim() : "";
+
+          // Jika alamat sama persis dengan nama, kosongkan agar tidak mengisi nama ke kolom alamat
           if (alamatVal && namaVal && alamatVal.toUpperCase() === namaVal.toUpperCase()) {
             alamatVal = "";
+          }
+
+          // Cegah nomor HP masuk ke kolom gardu
+          if (/^(08|628|\+62)/.test(garduVal) || garduVal.includes("***")) {
+            garduVal = "";
           }
 
           rowsToInsert.push({
@@ -1175,7 +1180,7 @@ async function prosesInputDataAwal() {
             lembar: idxLembar >= 0 ? (parseInt(String(r[idxLembar] ?? "1").replace(/[^0-9]/g, ""), 10) || 1) : 1,
             rptag: idxRptag >= 0 ? parseIDR(r[idxRptag]) : 0,
             rpbk: idxRpbk >= 0 ? parseIDR(r[idxRpbk]) : 0,
-            gardu: idxGardu >= 0 ? String(r[idxGardu] ?? "").trim() : ""
+            gardu: garduVal
           });
         }
       }
@@ -1333,6 +1338,15 @@ async function prosesUpdateMasterDil() {
       if (!r || r.length === 0) continue;
       const idpel = String(r[idxIdpel] ?? "").replace(/\.0$/, "").replace(/[^0-9]/g, "").trim();
       if (idpel.length >= 10) {
+        let garduRaw = idxGardu >= 0 ? String(r[idxGardu] ?? "").trim() : "";
+        let hpRaw = idxHp >= 0 ? String(r[idxHp] ?? "").replace(/\.0$/, "").trim() : "";
+
+        // Jika di kolom Gardu ternyata berisi Nomor HP (08... / 628... / ***), pindahkan ke kolom HP!
+        if (/^(08|628|\+62)/.test(garduRaw) || garduRaw.includes("***")) {
+          if (!hpRaw) hpRaw = garduRaw;
+          garduRaw = "";
+        }
+
         rowsDil.push({
           "IDPEL": idpel,
           "KDDK": idxKddk >= 0 ? String(r[idxKddk] ?? "").trim() : "",
@@ -1340,14 +1354,14 @@ async function prosesUpdateMasterDil() {
           "ALAMAT": idxAlamat >= 0 ? String(r[idxAlamat] ?? "").trim() : "",
           "TARIF": idxTarif >= 0 ? String(r[idxTarif] ?? "").trim() : "",
           "DAYA": idxDaya >= 0 ? String(r[idxDaya] ?? "").replace(/\.0$/, "").trim() : "0",
-          "NOMOR GARDU": idxGardu >= 0 ? String(r[idxGardu] ?? "").trim() : "",
+          "NOMOR GARDU": garduRaw,
           "NOTIANG": idxTiang >= 0 ? String(r[idxTiang] ?? "").trim() : "",
           "MEREKKWH": idxMerek >= 0 ? String(r[idxMerek] ?? "").trim() : "",
           "NOMORKWH": idxNoKwh >= 0 ? String(r[idxNoKwh] ?? "").replace(/\.0$/, "").trim() : "",
           "KOORDINAT X": idxKoordX >= 0 ? String(r[idxKoordX] ?? "").trim() : "",
           "KOORDINAT Y": idxKoordY >= 0 ? String(r[idxKoordY] ?? "").trim() : "",
           "NOIDENTITAS": idxNik >= 0 ? String(r[idxNik] ?? "").replace(/\.0$/, "").trim() : "",
-          "NO HP": idxHp >= 0 ? String(r[idxHp] ?? "").replace(/\.0$/, "").trim() : ""
+          "NO HP": hpRaw
         });
       }
     }
@@ -1379,6 +1393,7 @@ async function prosesUpdateMasterDil() {
   }
 }
 
+// FUNGSI PINTAR UPDATE NAMA SAJA, ALAMAT SAJA, ATAU KEDUANYA
 async function prosesUpdateMasterPb() {
   const fileEl = document.getElementById("fileMasterPb");
   const textVal = document.getElementById("textCopasPb").value.trim();
@@ -1388,7 +1403,7 @@ async function prosesUpdateMasterPb() {
 
   try {
     if (fileEl.files.length > 0) {
-      statusEl.innerHTML = `<span class="text-primary">⏳ Membaca file DPM / Pasang Baru...</span>`;
+      statusEl.innerHTML = `<span class="text-primary">⏳ Membaca file DPM / Pasang Baru / Alamat...</span>`;
       await new Promise(r => setTimeout(r, 80));
       const file = fileEl.files[0];
       const dataBuf = await file.arrayBuffer();
@@ -1397,27 +1412,35 @@ async function prosesUpdateMasterPb() {
       const rows = XLSX.utils.sheet_to_json(sheet, { header: 1, defval: "" });
 
       if (rows.length > 0) {
-        let headerRowIdx = 0;
+        let headerRowIdx = -1;
         for (let i = 0; i < Math.min(10, rows.length); i++) {
           const rStr = rows[i].map(c => String(c || "").trim().toUpperCase());
-          if (rStr.includes("IDPEL")) { headerRowIdx = i; break; }
+          if (rStr.includes("IDPEL") || rStr.includes("ID PELANGGAN")) { headerRowIdx = i; break; }
         }
 
-        const headers = rows[headerRowIdx].map(h => String(h || "").trim().toUpperCase().replace(/[_-]/g, " "));
-        const findCol = (names, fallback) => {
-          for (const n of names) {
-            const idx = headers.indexOf(n);
-            if (idx !== -1) return idx;
-          }
-          return fallback;
-        };
+        let idxId = 0, idxNm = -1, idxAl = -1, idxKddk = -1, idxTrf = -1, idxDaya = -1;
 
-        const idxId   = findCol(["IDPEL", "ID PELANGGAN"], 0);
-        const idxNm   = findCol(["NAMA", "NAMA PELANGGAN"], 1);
-        const idxAl   = findCol(["ALAMAT", "ALAMAT PELANGGAN", "NAMAPNJ", "PNJ"], -1);
-        const idxKddk = findCol(["KDDK", "KOKED", "KODE KEDUDUKAN"], -1);
-        const idxTrf  = findCol(["TARIF", "TARIP", "TRF"], -1);
-        const idxDaya = findCol(["DAYA"], -1);
+        if (headerRowIdx !== -1) {
+          const headers = rows[headerRowIdx].map(h => String(h || "").trim().toUpperCase().replace(/[_-]/g, " "));
+          const findCol = (names) => {
+            for (const n of names) {
+              const idx = headers.indexOf(n);
+              if (idx !== -1) return idx;
+            }
+            return -1;
+          };
+
+          idxId   = findCol(["IDPEL", "ID PELANGGAN", "ID PEL"]);
+          if (idxId === -1) idxId = 0;
+          idxNm   = findCol(["NAMA", "NAMA PELANGGAN"]);
+          idxAl   = findCol(["ALAMAT", "ALAMAT PELANGGAN", "NAMAPNJ", "PNJ", "DUSUN", "DESA"]);
+          idxKddk = findCol(["KDDK", "KOKED", "KODE KEDUDUKAN"]);
+          idxTrf  = findCol(["TARIF", "TARIP", "TRF"]);
+          idxDaya = findCol(["DAYA"]);
+        } else {
+          headerRowIdx = -1;
+          idxId = 0; idxNm = 1; idxAl = 2;
+        }
 
         for (let i = headerRowIdx + 1; i < rows.length; i++) {
           const r = rows[i];
@@ -1426,7 +1449,11 @@ async function prosesUpdateMasterPb() {
           if (idpel.length >= 10) {
             const nmVal = idxNm >= 0 ? String(r[idxNm] ?? "").trim() : "";
             let alVal = (idxAl >= 0 && idxAl !== idxNm) ? String(r[idxAl] ?? "").trim() : "";
-            if (alVal && nmVal && alVal.toUpperCase() === nmVal.toUpperCase()) alVal = "";
+
+            // Jika isi alamat sama persis dengan nama, kosongkan alamatnya agar tidak mengotori kolom alamat
+            if (alVal && nmVal && alVal.toUpperCase() === nmVal.toUpperCase()) {
+              alVal = "";
+            }
 
             rowsPb.push({
               "IDPEL": idpel,
@@ -1441,14 +1468,33 @@ async function prosesUpdateMasterPb() {
       }
     } else if (textVal !== "") {
       const lines = textVal.split(/\r?\n/);
+      let modeCopas2Kolom = "nama";
+
+      const barisPertama = lines[0].toUpperCase();
+      if (barisPertama.includes("ALAMAT") && !barisPertama.includes("NAMA")) {
+        modeCopas2Kolom = "alamat";
+      }
+
       lines.forEach(line => {
         const cols = line.split("\t");
         if (cols.length >= 2) {
           const idpel = cols[0].replace(/\.0$/, "").replace(/[^0-9]/g, "").trim();
           if (idpel.length >= 10) {
-            const nmVal = (cols[1] || "").trim();
-            let alVal = (cols[2] || "").trim();
-            if (alVal && nmVal && alVal.toUpperCase() === nmVal.toUpperCase()) alVal = "";
+            let nmVal = "", alVal = "";
+            if (cols.length === 2) {
+              const teks = (cols[1] || "").trim();
+              const ciriAlamat = /\b(DK|DUSUN|DSN|DS|DESA|RT|RW|JL|JALAN|KEC|KEL|KM|NO)\b/i.test(teks);
+              if (modeCopas2Kolom === "alamat" || ciriAlamat) {
+                alVal = teks;
+              } else {
+                nmVal = teks;
+              }
+            } else {
+              nmVal = (cols[1] || "").trim();
+              alVal = (cols[2] || "").trim();
+              if (alVal && nmVal && alVal.toUpperCase() === nmVal.toUpperCase()) alVal = "";
+            }
+
             rowsPb.push({
               "IDPEL": idpel,
               "NAMA": nmVal,
@@ -1458,7 +1504,7 @@ async function prosesUpdateMasterPb() {
         }
       });
     } else {
-      statusEl.innerHTML = `<span class="text-danger">⚠️ Pilih file DPM / Pasang Baru atau Paste kolom (IDPEL | NAMA | ALAMAT) terlebih dahulu!</span>`;
+      statusEl.innerHTML = `<span class="text-danger">⚠️ Pilih file Excel atau Paste kolom terlebih dahulu!</span>`;
       return;
     }
 
@@ -1473,19 +1519,19 @@ async function prosesUpdateMasterPb() {
       const chunk = rowsPb.slice(i, i + chunkSize);
       const selesai = Math.min(i + chunkSize, rowsPb.length);
       const persen = Math.round((selesai / rowsPb.length) * 100);
-      statusEl.innerHTML = `<span class="text-primary">⏳ Menyimpan Nama & Alamat Asli ke dataplg3 & data_tunggakan: <b>${selesai.toLocaleString("id-ID")} / ${rowsPb.length.toLocaleString("id-ID")}</b> (${persen}%)...</span>`;
+      statusEl.innerHTML = `<span class="text-primary">⏳ Menyimpan ke dataplg3 & data_tunggakan: <b>${selesai.toLocaleString("id-ID")} / ${rowsPb.length.toLocaleString("id-ID")}</b> (${persen}%)...</span>`;
       const { data, error } = await db.rpc('update_master_dari_pb', { p_data: chunk });
       if (error) throw error;
       totalBerhasil += (data || 0);
     }
 
-    statusEl.innerHTML = `<span class="text-success">✅ Selesai! ${totalBerhasil.toLocaleString("id-ID")} Nama & Alamat Pelanggan asli berhasil disimpan ke dataplg3 & langsung disinkronkan!</span>`;
+    statusEl.innerHTML = `<span class="text-success">✅ Selesai! ${totalBerhasil.toLocaleString("id-ID")} data berhasil diperbarui ke dataplg3 & langsung disinkronkan!</span>`;
     document.getElementById("textCopasPb").value = "";
     fileEl.value = "";
     loadSheet(currentSheet, true);
 
   } catch (err) {
-    statusEl.innerHTML = `<span class="text-danger">❌ Gagal mengupdate DPM/Pasang Baru: ${err.message}</span>`;
+    statusEl.innerHTML = `<span class="text-danger">❌ Gagal mengupdate data: ${err.message}</span>`;
   }
 }
 
@@ -1958,7 +2004,7 @@ async function eksekusiCetakF4() {
   doc.save(namaFile);
 }
 
-// FUNGSI CETAK 1 SLOT INVOICE F4: HURUF LEBIH BESAR, GARDU TANPA 52405, ADA Rp., & SPASI BULAN TAHUN
+// FUNGSI CETAK 1 SLOT INVOICE F4: HURUF LEBIH BESAR, GARDU TANPA 52405 & TANPA NO HP, ADA Rp.
 function gambarSatuSlotInvoiceF4(doc, r, yTop, slotH, pakaiAdmin, biayaAdmin, bulanTagihan, tglSurat) {
   const totalTagihan = parseIDR(r.jumlah) + (pakaiAdmin ? biayaAdmin : 0);
   const totalStr = "Rp. " + totalTagihan.toLocaleString("id-ID");
@@ -1975,7 +2021,7 @@ function gambarSatuSlotInvoiceF4(doc, r, yTop, slotH, pakaiAdmin, biayaAdmin, bu
     doc.setLineDashPattern([], 0);
   }
 
-  // ================= BAGIAN KIRI: BUKTI PETUGAS (HURUF DIPERBESAR) =================
+  // ================= BAGIAN KIRI: BUKTI PETUGAS =================
   let yL = yTop + 6.5;
   const xL1 = 4, xL2 = 18.5;
   doc.setFont("helvetica", "normal");
@@ -1997,7 +2043,7 @@ function gambarSatuSlotInvoiceF4(doc, r, yTop, slotH, pakaiAdmin, biayaAdmin, bu
   doc.line(xL2 + 4, yL, 58, yL);
   doc.setLineDashPattern([], 0);
 
-  // ================= BAGIAN KANAN: UNTUK PELANGGAN (HURUF DIPERBESAR) =================
+  // ================= BAGIAN KANAN: UNTUK PELANGGAN =================
   const xR = 64;
   let yR = yTop + 6;
 
@@ -2086,7 +2132,6 @@ function slotTopIndex(yTop, slotH) {
 // ============================================================================
 function openPetugas(k) {
   currentPetugas = k; pushView(renderPetugas);
-  // Perbarui kartu ringkasan di atas khusus untuk petugas yang dipilih
   updateSummaryCards(k);
 
   const data = allData.filter(r => r.kode === k);
@@ -2214,7 +2259,7 @@ function renderDetail() {
     ? `<button class="btn btn-primary btn-sm text-nowrap fw-bold" onclick="bukaModalCetakF4('${currentPetugas}')">🖨️ CETAK F4 (4/LBR)</button>`
     : ``;
 
-  view.innerHTML = `<h6 class="text-center fw-bold small text-uppercase">${currentTitle.replace(/_/g,' ')}</h6><div class="d-flex mb-2 gap-1"><input id="search" class="form-control form-control-sm" placeholder="Cari IDPEL / Nama / Alamat / Koked...">${btnCetakF4}<button class="btn btn-success btn-sm text-nowrap fw-bold" onclick="exportExcel()">📥 DOWNLOAD DETAIL</button></div><div id="tableArea"></div>`;
+  view.innerHTML = `<h6 class="text-center fw-bold small text-uppercase">${currentTitle.replace(/_/g,' ')}</h6><div class="d-flex mb-2 gap-1"><input id="search" class="form-control form-control-sm" placeholder="Cari IDPEL / Nama / Koked...">${btnCetakF4}<button class="btn btn-success btn-sm text-nowrap fw-bold" onclick="exportExcel()">📥 DOWNLOAD DETAIL</button></div><div id="tableArea"></div>`;
   document.getElementById("search").oninput = e => {
     const t = e.target.value.toLowerCase();
     drawTable(currentDetail.filter(r => Object.values(r).some(v => String(v).toLowerCase().includes(t))));
@@ -2233,27 +2278,21 @@ function drawTable(data) {
     drawTable(sorted);
   };
   const icon = (k) => sortState.key === k ? (sortState.asc ? ' ▲' : ' ▼') : '';
-  let h = `<div class="table-responsive"><table class="table table-sm table-bordered table-striped bg-white" style="font-size:0.75rem"><thead class="table-primary text-nowrap"><tr><th class="clickable text-start" onclick="triggerSort('idpel')">IDPEL${icon('idpel')}</th><th class="clickable text-start" onclick="triggerSort('nama')">Nama${icon('nama')}</th><th class="clickable text-start" onclick="triggerSort('alamat')">Alamat${icon('alamat')}</th><th class="clickable text-center" onclick="triggerSort('koked')">Koked${icon('koked')}</th><th class="clickable text-end" onclick="triggerSort('jumlah')">Rp${icon('jumlah')}</th></tr></thead><tbody>`;
-  data.forEach(r => { h += `<tr class="clickable" onclick="showCardsByData('${r.idpel}')"><td class="text-start">${r.idpel}</td><td class="text-start fw-semibold">${r.nama}</td><td class="text-start text-muted">${formatAlamatTampil(r)}</td><td class="text-center">${r.koked}</td><td class="text-end fw-bold">${parseIDR(r.jumlah).toLocaleString("id-ID")}</td></tr>`; });
+  let h = `<div class="table-responsive"><table class="table table-sm table-bordered table-striped bg-white" style="font-size:0.75rem"><thead class="table-primary text-nowrap"><tr><th class="clickable text-start" onclick="triggerSort('idpel')">IDPEL${icon('idpel')}</th><th class="clickable text-start" onclick="triggerSort('nama')">Nama${icon('nama')}</th><th class="clickable text-center" onclick="triggerSort('koked')">Koked${icon('koked')}</th><th class="clickable text-end" onclick="triggerSort('jumlah')">Rp${icon('jumlah')}</th></tr></thead><tbody>`;
+  data.forEach(r => { h += `<tr class="clickable" onclick="showCardsByData('${r.idpel}')"><td class="text-start">${r.idpel}</td><td class="text-start fw-semibold">${r.nama}</td><td class="text-center">${r.koked}</td><td class="text-end fw-bold">${parseIDR(r.jumlah).toLocaleString("id-ID")}</td></tr>`; });
   document.getElementById("tableArea").innerHTML = h + `</tbody></table></div>`;
 }
 
+// TAMPILAN KARTU PELANGGAN BERSIH: HANYA IDPEL | TARIF/DAYA | ALAMAT (TANPA GARDU & NO KWH)
 function showCardsByData(id) {
   pushView(renderDetail);
   updateSummaryCards(currentPetugas || "Semua");
 
   let h = "";
   currentDetail.forEach(r => {
-    const alamatTampil = formatAlamatTampil(r);
-    const garduPendek = formatGarduPendek(r.gardu);
-    const infoTeknis = [
-      garduPendek ? `Gardu: ${garduPendek}` : "",
-      r.no_kwh ? `No.KWH: ${r.no_kwh}` : ""
-    ].filter(Boolean).join(" | ");
-
     h += `<div class="card mb-2 ${r.idpel === id?'highlight':''}" id="card-${r.idpel}"><div class="card-body p-2">
       <div class="d-flex justify-content-between"><b class="fs-6">${r.nama}</b> <span class="badge bg-secondary">${r.koked}</span></div>
-      <p class="text-muted mb-1">${r.idpel} | ${r.tarif}/${r.daya} | 📍 <b class="text-dark">${alamatTampil}</b>${infoTeknis ? ' | ' + infoTeknis : ''}</p>
+      <p class="text-muted mb-1">${r.idpel} | ${r.tarif}/${r.daya} | ${r.alamat || '-'}</p>
       <div class="d-flex justify-content-between align-items-center mt-2">
         <b class="text-danger fs-6">Rp. ${parseIDR(r.jumlah).toLocaleString("id-ID")}</b>
         <div class="d-flex gap-1">
