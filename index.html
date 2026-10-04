@@ -9,6 +9,7 @@
 <script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <style>
 body { background: #f0f4f8; font-family: 'Segoe UI', system-ui, -apple-system, sans-serif; color: #1e293b; }
@@ -295,16 +296,16 @@ tr.clickable:hover td { filter: brightness(0.92); }
           <!-- TAB 3: INPUT SALDO AWAL -->
           <div class="tab-pane fade" id="pane-input">
             <div class="alert alert-secondary py-2 small">
-              <b>Input Data Tagihan / Tunggakan PLN (Mendukung File Asli <code>.xlsx</code> Kolom A s/d AA):</b><br>
-              ⚠️ <b>PENTING:</b> Pastikan file Excel <b>sudah ditutup di aplikasi Microsoft Excel</b> sebelum Anda klik tombol <b>Pilih File</b> di bawah agar tidak muncul pesan error gagal baca!
+              <b>Input Data Tagihan / Tunggakan PLN (Mendukung File Asli <code>.xlsx</code>, <code>.csv</code>, maupun Hasil Convert PDF):</b><br>
+              ✨ Dilengkapi <b>Pemindai Pola Anti-Geser</b>: Walaupun ada kolom Excel hasil convert PDF yang bergeser, sistem otomatis mengenali posisi IDPEL, Nama, Tarif, Daya, Gardu, & Alamat dengan akurat!
             </div>
             <div class="mb-2">
-              <label class="form-label small fw-bold">Opsi A: Pilih File Excel Asli PLN (.xlsx / .csv)</label>
+              <label class="form-label small fw-bold">Opsi A: Pilih File Excel Tagihan PLN (.xlsx / .csv)</label>
               <input type="file" id="fileInputPln" class="form-control form-control-sm" accept=".csv, .xlsx, .xls" onchange="siapkanFileKeMemori(this, 'input_awal')">
             </div>
             <div class="mb-2">
               <label class="form-label small fw-bold">Opsi B: Atau Copy-Paste Baris dari Excel PLN</label>
-              <textarea id="textCopasPln" class="form-control form-control-sm" rows="5" placeholder="Atau blok langsung baris data di dalam Excel (dari kolom A sampai AA), Copy, lalu Paste di sini..."></textarea>
+              <textarea id="textCopasPln" class="form-control form-control-sm" rows="5" placeholder="Atau blok langsung baris data di dalam Excel, Copy, lalu Paste di sini..."></textarea>
             </div>
             <div class="d-flex gap-2">
               <button class="btn btn-primary btn-sm fw-bold flex-grow-1" onclick="prosesInputDataAwal()">📤 Upload & Simpan ke Database</button>
@@ -363,7 +364,7 @@ tr.clickable:hover td { filter: brightness(0.92); }
             </div>
           </div>
 
-          <!-- TAB 5: UPDATE MASTER PELANGGAN (dataplg3) FLEKSIBEL SEMUA KOLOM -->
+          <!-- TAB 5: UPDATE MASTER PELANGGAN (dataplg3) ANTI-GESER & BISA LANGSUNG PDF -->
           <div class="tab-pane fade" id="pane-master">
             <!-- BAGIAN A: UPDATE DARI FILE DIL / FILE TEKNIS -->
             <div class="p-2 border border-primary rounded mb-3 bg-light">
@@ -371,23 +372,23 @@ tr.clickable:hover td { filter: brightness(0.92); }
               <div class="small text-muted mb-2">
                 Bisa upload file <b>DIL lengkap</b> maupun file Excel yang hanya berisi <b>sebagian kolom saja</b> (misal hanya <code>IDPEL</code> + <code>NOMOR GARDU</code>, atau <code>NOTIANG</code>, atau <code>NOMORKWH</code>, atau <code>KDDK</code>). Kolom yang tidak ada di file <b>tidak akan menghapus data lama</b> di <code>dataplg3</code>!
               </div>
-              <input type="file" id="fileMasterDil" class="form-control form-control-sm mb-2" accept=".xlsx, .xls, .csv" onchange="siapkanFileKeMemori(this, 'master_dil')">
+              <input type="file" id="fileMasterDil" class="form-control form-control-sm mb-2" accept=".xlsx, .xls, .csv, .pdf" onchange="siapkanFileKeMemori(this, 'master_dil')">
               <button class="btn btn-primary btn-sm fw-bold w-100" onclick="prosesUpdateMasterDil()">🔄 Proses & Update File ke dataplg3</button>
             </div>
 
-            <!-- BAGIAN B: UPDATE FLEKSIBEL (NAMA / ALAMAT / GARDU / KWH / KDDK / SEMUA) -->
+            <!-- BAGIAN B: UPDATE FLEKSIBEL + BISA UPLOAD PDF LANGSUNG TANPA CONVERT -->
             <div class="p-2 border border-success rounded bg-light">
-              <h6 class="fw-bold text-success mb-1">B. Update Fleksibel (Nama / Alamat / Gardu Tiang / No KWH / KDDK / Gabungan)</h6>
+              <h6 class="fw-bold text-success mb-1">B. Update Nama, Alamat, Tarif, Daya, Gardu, KWH (Mendukung File <code>.PDF</code> Asli & <code>.XLSX</code> Anti-Geser!)</h6>
               <div class="small text-muted mb-2">
-                Mendukung file Excel dengan judul kolom apa pun (<code>IDPEL</code> + <code>NAMA</code> / <code>ALAMAT</code> / <code>GARDU</code> / <code>NOTIANG</code> / <code>NOMORKWH</code> / <code>KDDK</code> / <code>TARIF</code> / <code>DAYA</code>) atau Copy-Paste langsung dari Excel:
+                ✨ <b>Fitur Anti-Geser Kolom:</b> Anda bisa pilih langsung <b>File <code>.pdf</code> Asli PLN</b> (tanpa perlu convert!) atau <b>File <code>.xlsx</code> hasil convert PDF</b>. Sistem otomatis memindai pola <code>IDPEL</code>, <code>NAMA</code>, <code>TARIF</code>, <code>DAYA</code>, <code>GARDU</code>, dan <code>ALAMAT</code> di setiap baris tanpa takut kolom bergeser!
               </div>
-              <label class="form-label small fw-bold mb-1">Opsi 1: Pilih File Excel/CSV (Otomatis Deteksi Judul Kolom yang Ada):</label>
-              <input type="file" id="fileMasterPb" class="form-control form-control-sm mb-2" accept=".xlsx, .xls, .csv">
+              <label class="form-label small fw-bold mb-1">Opsi 1: Pilih File (.pdf Asli / .xlsx Hasil Convert / DPM / PB):</label>
+              <input type="file" id="fileMasterPb" class="form-control form-control-sm mb-2" accept=".pdf, .xlsx, .xls, .csv">
               
               <div class="d-flex justify-content-between align-items-center mb-1 flex-wrap gap-1">
                 <label class="form-label small fw-bold mb-0">Opsi 2: Atau Copy-Paste Kolom dari Excel:</label>
                 <select id="selectModeCopasMaster" class="form-select form-select-sm fw-bold text-success" style="width: auto; font-size: 0.75rem;">
-                  <option value="auto">✨ Otomatis Deteksi (Dari Baris Judul / Isi Data)</option>
+                  <option value="auto">✨ Otomatis Deteksi (Pola Anti-Geser / Judul Kolom)</option>
                   <option value="nama_alamat">📋 IDPEL | NAMA | ALAMAT</option>
                   <option value="nama">👤 IDPEL | NAMA SAJA</option>
                   <option value="alamat">📍 IDPEL | ALAMAT SAJA</option>
@@ -398,7 +399,7 @@ tr.clickable:hover td { filter: brightness(0.92); }
                   <option value="kddk">🧭 IDPEL | KDDK (KOKED) SAJA</option>
                 </select>
               </div>
-              <textarea id="textCopasPb" class="form-control form-control-sm mb-2" rows="3" placeholder="Copy kolom dari Excel (misal IDPEL dengan Gardu, atau No KWH, atau Nama, atau Alamat, atau Gabungan beserta baris judulnya) lalu Paste di sini..."></textarea>
+              <textarea id="textCopasPb" class="form-control form-control-sm mb-2" rows="3" placeholder="Copy baris/kolom dari Excel lalu Paste di sini..."></textarea>
               <button class="btn btn-success btn-sm fw-bold w-100" onclick="prosesUpdateMasterPb()">✨ Simpan & Sinkronkan ke dataplg3 & data_tunggakan</button>
             </div>
           </div>
@@ -422,6 +423,9 @@ const PIN_CETAK = "12345";     // PIN Khusus 4 Orang Print: Hanya Buka Tombol Ce
 
 const db = supabase.createClient(SUPABASE_URL.trim(), SUPABASE_KEY.trim());
 const { jsPDF } = window.jspdf;
+if (window.pdfjsLib) {
+  window.pdfjsLib.GlobalWorkerOptions.workerSrc = "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js";
+}
 
 let allData = [], currentDetail = [], currentTitle = "", currentPetugas = "Semua", currentSheet = "lembar1";
 let historyStack = [], sortState = { key: null, asc: true };
@@ -549,6 +553,158 @@ function getDayFromTgl(tglStr) {
     if (!isNaN(d)) return d;
   }
   return null;
+}
+
+// ============================================================================
+// PEMINDAI BARIS PINTAR ANTI-GESER (UNTUK PDF & EXCEL HASIL CONVERT PDF)
+// Mengenali IDPEL, Nama, Tarif, Daya, Gardu, Alamat, & KDDK berdasarkan POLA,
+// sehingga meskipun kolom bergeser ke kiri/kanan tetap 100% akurat!
+// ============================================================================
+const REGEX_TARIF_PLN = /^(R1|R1M|R1MT|R1T|R2|R2T|R3|R3T|B1|B1T|B2|B2T|B3|S1|S2|S2T|S3|I1|I1T|I2|I2T|I3|P1|P1T|P2|P3|P3T|L|C|T)$/i;
+const SET_DAYA_PLN = new Set([250, 450, 900, 1300, 2200, 3500, 4400, 5500, 6600, 7700, 10600, 11000, 13200, 16500, 23000, 33000, 41500, 53000, 66000, 82500, 105000, 131000, 147000, 164000, 197000, 200000, 233000, 240000, 279000, 329000, 345000, 414000, 555000, 690000, 865000, 1110000, 1385000, 1730000]);
+
+function pindaiSatuBarisAntiGeser(selArray) {
+  // Bersihkan sel kosong dan pecah jika ada sel yang tergabung (merged) saat convert PDF
+  const tokens = [];
+  selArray.forEach(c => {
+    const s = String(c ?? "").replace(/\.0$/, "").trim();
+    if (s !== "") tokens.push(s);
+  });
+  if (tokens.length < 2) return null;
+
+  // 1. Cari posisi Jangkar IDPEL (12 digit angka diawali 52 atau 11-12 digit angka)
+  let idxIdpel = -1, idpelVal = "";
+  for (let i = 0; i < Math.min(6, tokens.length); i++) {
+    const cleanNum = tokens[i].replace(/[^0-9]/g, "");
+    if (/^52\d{10}$/.test(cleanNum) || (i <= 3 && /^\d{11,12}$/.test(cleanNum))) {
+      idxIdpel = i;
+      idpelVal = cleanNum;
+      break;
+    }
+  }
+  if (idxIdpel === -1) return null;
+
+  // 2. Cari posisi Jangkar TARIF & DAYA setelah IDPEL
+  let idxTarif = -1, tarifVal = "", dayaVal = "";
+  for (let i = idxIdpel + 1; i < Math.min(idxIdpel + 6, tokens.length); i++) {
+    const tClean = tokens[i].toUpperCase().replace(/\s+/g, "");
+    // Kadang di PDF Tarif & Daya tergabung jadi 1 sel seperti "R1M 900" atau "R1/450"
+    const matchGabung = tokens[i].trim().match(/^(R1M|R1MT|R1T|R1|R2T|R2|R3T|R3|B1T|B1|B2T|B2|B3|S1|S2T|S2|S3|I1T|I1|I2T|I2|I3|P1T|P1|P2|P3T|P3)\s*[\/\s]\s*(\d{3,7})$/i);
+    if (matchGabung) {
+      idxTarif = i;
+      tarifVal = matchGabung[1].toUpperCase();
+      dayaVal = matchGabung[2];
+      break;
+    }
+    if (REGEX_TARIF_PLN.test(tClean)) {
+      idxTarif = i;
+      tarifVal = tClean;
+      if (i + 1 < tokens.length) {
+        const nextNum = parseInt(tokens[i + 1].replace(/[^0-9]/g, ""), 10);
+        if (SET_DAYA_PLN.has(nextNum) || (nextNum >= 200 && nextNum <= 5000000)) {
+          dayaVal = String(nextNum);
+        }
+      }
+      break;
+    }
+  }
+
+  // Nama adalah teks di antara IDPEL dan TARIF
+  let namaVal = "";
+  if (idxTarif > idxIdpel + 1) {
+    namaVal = tokens.slice(idxIdpel + 1, idxTarif).join(" ").trim();
+  } else if (idxTarif === -1 && idxIdpel + 1 < tokens.length) {
+    // Jika baris tidak punya kolom tarif
+    namaVal = tokens[idxIdpel + 1];
+  }
+
+  // 3. Cari posisi Jangkar GARDU ("52405GD..." / "GD..." / "- GD") dan RBM/KDDK ("HBA...")
+  let idxGardu = -1, garduVal = "";
+  let idxHba = -1, kddkVal = "";
+
+  const startCariGardu = idxTarif !== -1 ? idxTarif + 1 : idxIdpel + 2;
+  for (let i = startCariGardu; i < tokens.length; i++) {
+    const tk = tokens[i].trim();
+    if (idxGardu === -1 && (/52405GD/i.test(tk) || /\bGD\s+K[1-9]/i.test(tk) || /^(GD\d+|HB\d+)/i.test(tk))) {
+      idxGardu = i;
+      garduVal = tk;
+    } else if (idxHba === -1 && /^HBA[A-Z0-9]{3,12}$/i.test(tk.replace(/\s+/g, ""))) {
+      idxHba = i;
+      const cleanHba = tk.replace(/\s+/g, "").toUpperCase();
+      // Hanya simpan sebagai KDDK jika lengkap >= 10 karakter (bukan RBM 6 huruf)
+      if (cleanHba.length >= 10) kddkVal = cleanHba;
+      break;
+    }
+  }
+
+  // 4. Alamat adalah teks di antara GARDU dan RBM (HBA...)
+  let alamatVal = "";
+  if (idxGardu !== -1 && idxHba !== -1 && idxHba > idxGardu + 1) {
+    alamatVal = tokens.slice(idxGardu + 1, idxHba).join(" ").trim();
+  } else if (idxGardu !== -1 && idxGardu + 1 < tokens.length) {
+    const kandidat = tokens[idxGardu + 1].trim();
+    if (!/^HBA/i.test(kandidat) && isNaN(kandidat.replace(/[^0-9]/g, ""))) {
+      alamatVal = kandidat;
+    }
+  }
+
+  if (alamatVal && namaVal && alamatVal.toUpperCase() === namaVal.toUpperCase()) {
+    alamatVal = "";
+  }
+
+  return {
+    "IDPEL": idpelVal,
+    "KDDK": kddkVal,
+    "NAMA": namaVal,
+    "ALAMAT": alamatVal,
+    "TARIF": tarifVal,
+    "DAYA": dayaVal,
+    "NOMOR GARDU": garduVal,
+    "NOTIANG": "",
+    "MEREKKWH": "",
+    "NOMORKWH": "",
+    "KOORDINAT X": "",
+    "KOORDINAT Y": "",
+    "NOIDENTITAS": "",
+    "NO HP": ""
+  };
+}
+
+// Fungsi Ekstrak Teks Baris Demi Baris Langsung dari File .PDF Asli PLN
+async function ekstrakBarisDariFilePdf(arrayBuffer, statusEl) {
+  const pdf = await window.pdfjsLib.getDocument({ data: arrayBuffer }).promise;
+  const hasil = [];
+
+  for (let pageNum = 1; pageNum <= pdf.numPages; pageNum++) {
+    if (pageNum % 5 === 1 || pageNum === pdf.numPages) {
+      statusEl.innerHTML = `<span class="text-primary">⏳ Memindai halaman PDF <b>${pageNum} / ${pdf.numPages}</b> (Ditemukan ${hasil.length.toLocaleString("id-ID")} pelanggan)...</span>`;
+      await new Promise(r => setTimeout(r, 10));
+    }
+
+    const page = await pdf.getPage(pageNum);
+    const textContent = await page.getTextContent();
+
+    // Kelompokkan item teks berdasarkan koordinat Y (baris yang sama)
+    const barisMap = {};
+    textContent.items.forEach(item => {
+      const str = (item.str || "").trim();
+      if (!str) return;
+      const yKey = Math.round(item.transform[5] / 3) * 3;
+      if (!barisMap[yKey]) barisMap[yKey] = [];
+      barisMap[yKey].push({ x: item.transform[4], text: str });
+    });
+
+    // Urutkan dari atas ke bawah, dan dari kiri ke kanan
+    const yKeys = Object.keys(barisMap).map(Number).sort((a, b) => b - a);
+    yKeys.forEach(y => {
+      const rowItems = barisMap[y].sort((a, b) => a.x - b.x).map(it => it.text);
+      const parsed = pindaiSatuBarisAntiGeser(rowItems);
+      if (parsed && parsed["IDPEL"]) {
+        hasil.push(parsed);
+      }
+    });
+  }
+  return hasil;
 }
 
 // ============================================================================
@@ -1074,7 +1230,7 @@ async function prosesCekEis() {
   }
 }
 
-// FUNGSI INPUT SALDO AWAL: DUKUNG PENUH FILE ASLI .XLSX (KOLOM A s/d AA), CSV, & COPAS
+// FUNGSI INPUT SALDO AWAL: DUKUNG PENUH FILE ASLI .XLSX, CSV, & KOREKSI ANTI-GESER HASIL CONVERT PDF
 async function prosesInputDataAwal() {
   const fileEl = document.getElementById("fileInputPln");
   const textVal = document.getElementById("textCopasPln").value.trim();
@@ -1093,7 +1249,7 @@ async function prosesInputDataAwal() {
         dataBuf = await file.arrayBuffer();
       }
 
-      statusEl.innerHTML = `<span class="text-primary">⏳ Mengekstrak 60.000+ baris dari <b>${fileName}</b> (Mohon tunggu 5-15 detik)...</span>`;
+      statusEl.innerHTML = `<span class="text-primary">⏳ Mengekstrak baris dari <b>${fileName}</b> (Mohon tunggu 5-15 detik)...</span>`;
       await new Promise(r => setTimeout(r, 100));
 
       let rows = [];
@@ -1141,8 +1297,8 @@ async function prosesInputDataAwal() {
         idxGardu  = findCol(["GARDU", "NOMOR GARDU", "KODE GARDU"], 7);
         idxTarif  = findCol(["TARIF", "TARIP", "TRF"], 8);
         idxDaya   = findCol(["DAYA"], 9);
-        idxLembar = findCol(["LEMBAR", "LBR"], 14);
-        idxRptag  = findCol(["RPTAG", "RP TAG", "TAGIHAN"], 25);
+        idxLembar = findCol(["LEMBAR", "LBR", "JML TUNGGAKAN", "BLN TUNGGAKAN"], 14);
+        idxRptag  = findCol(["RPTAG", "RP TAG", "TAGIHAN", "RP TAGIHAN"], 25);
         idxRpbk   = findCol(["RPBK", "RP BK", "BK", "DENDA"], 26);
 
         if (idxAlamat === idxNama) idxAlamat = -1;
@@ -1166,26 +1322,43 @@ async function prosesInputDataAwal() {
           continue;
         }
 
-        const idpelClean = rawIdpel.replace(/[^0-9]/g, "");
-        if (idpelClean.length >= 10) {
-          const namaVal = idxNama >= 0 ? String(r[idxNama] ?? "").trim() : "";
-          let alamatVal = idxAlamat >= 0 ? String(r[idxAlamat] ?? "").trim() : "";
-          let garduVal = idxGardu >= 0 ? String(r[idxGardu] ?? "").trim() : "";
+        let idpelClean = rawIdpel.replace(/[^0-9]/g, "");
+        let namaVal = idxNama >= 0 ? String(r[idxNama] ?? "").trim() : "";
+        let alamatVal = idxAlamat >= 0 ? String(r[idxAlamat] ?? "").trim() : "";
+        let garduVal = idxGardu >= 0 ? String(r[idxGardu] ?? "").trim() : "";
+        let tarifVal = idxTarif >= 0 ? String(r[idxTarif] ?? "").trim() : "";
+        let dayaVal = idxDaya >= 0 ? (parseInt(String(r[idxDaya] ?? "0").replace(/[^0-9]/g, ""), 10) || 0) : 0;
+        let kokedVal = idxKoked >= 0 ? String(r[idxKoked] ?? "").trim() : "";
 
+        // JIKA BARIS INI BERGESER (misal dari hasil convert PDF: IDPEL tidak di tempatnya atau Alamat berisi Gardu/HBA),
+        // gunakan Pemindai Pola Anti-Geser untuk meluruskan kolom baris ini!
+        if (idpelClean.length < 10 || /52405GD|^HBA/i.test(alamatVal) || (!REGEX_TARIF_PLN.test(tarifVal) && tarifVal !== "")) {
+          const hasilPindai = pindaiSatuBarisAntiGeser(r);
+          if (hasilPindai && hasilPindai["IDPEL"]) {
+            idpelClean = hasilPindai["IDPEL"];
+            if (hasilPindai["NAMA"]) namaVal = hasilPindai["NAMA"];
+            if (hasilPindai["ALAMAT"]) alamatVal = hasilPindai["ALAMAT"];
+            if (hasilPindai["NOMOR GARDU"]) garduVal = hasilPindai["NOMOR GARDU"];
+            if (hasilPindai["TARIF"]) tarifVal = hasilPindai["TARIF"];
+            if (hasilPindai["DAYA"]) dayaVal = parseInt(hasilPindai["DAYA"], 10) || 0;
+            if (hasilPindai["KDDK"]) kokedVal = hasilPindai["KDDK"];
+          }
+        }
+
+        if (idpelClean.length >= 10) {
           if (alamatVal && namaVal && alamatVal.toUpperCase() === namaVal.toUpperCase()) {
             alamatVal = "";
           }
-
           if (/^(08|628|\+62)/.test(garduVal) || garduVal.includes("***")) {
             garduVal = "";
           }
 
           rowsToInsert.push({
             idpel: idpelClean,
-            koked: idxKoked >= 0 ? String(r[idxKoked] ?? "").trim() : "",
+            koked: kokedVal,
             nama: namaVal,
-            tarif: idxTarif >= 0 ? String(r[idxTarif] ?? "").trim() : "",
-            daya: idxDaya >= 0 ? (parseInt(String(r[idxDaya] ?? "0").replace(/[^0-9]/g, ""), 10) || 0) : 0,
+            tarif: tarifVal,
+            daya: dayaVal,
             alamat: alamatVal,
             lembar: idxLembar >= 0 ? (parseInt(String(r[idxLembar] ?? "1").replace(/[^0-9]/g, ""), 10) || 1) : 1,
             rptag: idxRptag >= 0 ? parseIDR(r[idxRptag]) : 0,
@@ -1286,8 +1459,7 @@ async function prosesInputDataAwal() {
 }
 
 // ============================================================================
-// FUNGSI EKSTRAKSI BARIS EXCEL FLEKSIBEL (UNTUK TAB 5 BAGIAN A & B)
-// Mendukung 1 kolom saja (Gardu saja, KWH saja, Nama saja, Alamat saja) atau Semua Kolom!
+// FUNGSI EKSTRAKSI BARIS EXCEL FLEKSIBEL + PEMINDAI POLA ANTI-GESER (UNTUK TAB 5)
 // ============================================================================
 function ekstrakBarisMasterFleksibel(rows) {
   let headerRowIdx = -1;
@@ -1301,9 +1473,15 @@ function ekstrakBarisMasterFleksibel(rows) {
 
   let idxIdpel = 0, idxKddk = -1, idxNama = -1, idxAlamat = -1, idxTarif = -1, idxDaya = -1;
   let idxGardu = -1, idxTiang = -1, idxMerek = -1, idxNoKwh = -1, idxKoordX = -1, idxKoordY = -1, idxNik = -1, idxHp = -1;
+  let isLaporanTagihanPdf = false;
 
   if (headerRowIdx !== -1) {
     const headers = rows[headerRowIdx].map(h => String(h || "").trim().toUpperCase().replace(/[_-]/g, " "));
+    // Deteksi apakah ini file Excel hasil convert dari PDF Laporan Tagihan (punya kolom SATKER / SUBKOGOL / RBM)
+    if (headers.includes("RBM") || headers.includes("SUBKOGOL") || headers.includes("KOGOL") || headers.includes("UNITAP")) {
+      isLaporanTagihanPdf = true;
+    }
+
     const findIdx = (keys) => {
       for (const k of keys) {
         const idx = headers.indexOf(k);
@@ -1312,9 +1490,8 @@ function ekstrakBarisMasterFleksibel(rows) {
       return -1;
     };
 
-    idxIdpel = findIdx(["IDPEL", "ID PELANGGAN", "ID PEL"]);
+    idxIdpel  = findIdx(["IDPEL", "ID PELANGGAN", "ID PEL"]);
     if (idxIdpel === -1) idxIdpel = 0;
-    // PENTING: Semua fallback dibuat -1 agar jika kolom tidak ada di file Excel, tidak menebak/menggeser kolom lain!
     idxKddk   = findIdx(["KDDK", "KOKED", "KODE KEDUDUKAN"]);
     idxNama   = findIdx(["NAMA", "NAMA PELANGGAN"]);
     idxAlamat = findIdx(["ALAMAT", "ALAMAT PELANGGAN", "NAMAPNJ", "PNJ", "DUSUN", "DESA"]);
@@ -1329,14 +1506,11 @@ function ekstrakBarisMasterFleksibel(rows) {
     idxNik    = findIdx(["NOIDENTITAS", "NO IDENTITAS", "NIK", "KTP", "NO KTP"]);
     idxHp     = findIdx(["NO HP", "NOHP", "TELEPON", "HP", "NO TELP"]);
   } else {
-    // Jika file Excel sama sekali tidak punya baris Header:
     const colCount = (rows[0] || []).length;
     if (colCount >= 12) {
-      // Format standar DIL 14 kolom tanpa header
       idxIdpel = 0; idxKddk = 1; idxNama = 2; idxAlamat = 3; idxTarif = 4; idxDaya = 5;
       idxGardu = 6; idxTiang = 7; idxMerek = 8; idxNoKwh = 9; idxKoordX = 10; idxKoordY = 11; idxNik = 12; idxHp = 13;
     } else {
-      // Format 2 atau 3 kolom tanpa header (IDPEL | NAMA | ALAMAT)
       idxIdpel = 0; idxNama = 1; idxAlamat = 2;
     }
   }
@@ -1347,14 +1521,36 @@ function ekstrakBarisMasterFleksibel(rows) {
   for (let i = startRow; i < rows.length; i++) {
     const r = rows[i];
     if (!r || r.length === 0) continue;
-    const idpel = String(r[idxIdpel] ?? "").replace(/\.0$/, "").replace(/[^0-9]/g, "").trim();
-    if (idpel.length >= 10) {
-      const nmVal = idxNama >= 0 ? String(r[idxNama] ?? "").trim() : "";
-      let alVal = (idxAlamat >= 0 && idxAlamat !== idxNama) ? String(r[idxAlamat] ?? "").trim() : "";
-      if (alVal && nmVal && alVal.toUpperCase() === nmVal.toUpperCase()) alVal = "";
 
-      let garduRaw = idxGardu >= 0 ? String(r[idxGardu] ?? "").trim() : "";
-      let hpRaw = idxHp >= 0 ? String(r[idxHp] ?? "").replace(/\.0$/, "").trim() : "";
+    // Jika ini adalah file hasil convert PDF Laporan Tagihan, selalu utamakan Pemindai Pola Anti-Geser!
+    if (isLaporanTagihanPdf) {
+      const pindai = pindaiSatuBarisAntiGeser(r);
+      if (pindai && pindai["IDPEL"]) {
+        hasil.push(pindai);
+        continue;
+      }
+    }
+
+    let idpel = String(r[idxIdpel] ?? "").replace(/\.0$/, "").replace(/[^0-9]/g, "").trim();
+    let nmVal = idxNama >= 0 ? String(r[idxNama] ?? "").trim() : "";
+    let alVal = (idxAlamat >= 0 && idxAlamat !== idxNama) ? String(r[idxAlamat] ?? "").trim() : "";
+    let trfVal = idxTarif >= 0 ? String(r[idxTarif] ?? "").trim() : "";
+    let dyVal = idxDaya >= 0 ? String(r[idxDaya] ?? "").replace(/\.0$/, "").trim() : "";
+    let garduRaw = idxGardu >= 0 ? String(r[idxGardu] ?? "").trim() : "";
+    let hpRaw = idxHp >= 0 ? String(r[idxHp] ?? "").replace(/\.0$/, "").trim() : "";
+
+    // Jika baris bergeser (misal IDPEL tidak terbaca 10-12 digit di kolom seharusnya, atau alamat malah berisi kode gardu/RBM),
+    // otomatis jalankan Pemindai Pola Anti-Geser pada baris tersebut!
+    if (idpel.length < 10 || /52405GD|^HBA/i.test(alVal)) {
+      const pindai = pindaiSatuBarisAntiGeser(r);
+      if (pindai && pindai["IDPEL"]) {
+        hasil.push(pindai);
+        continue;
+      }
+    }
+
+    if (idpel.length >= 10) {
+      if (alVal && nmVal && alVal.toUpperCase() === nmVal.toUpperCase()) alVal = "";
 
       if (/^(08|628|\+62)/.test(garduRaw) || garduRaw.includes("***")) {
         if (!hpRaw) hpRaw = garduRaw;
@@ -1366,8 +1562,8 @@ function ekstrakBarisMasterFleksibel(rows) {
         "KDDK": idxKddk >= 0 ? String(r[idxKddk] ?? "").trim() : "",
         "NAMA": nmVal,
         "ALAMAT": alVal,
-        "TARIF": idxTarif >= 0 ? String(r[idxTarif] ?? "").trim() : "",
-        "DAYA": idxDaya >= 0 ? String(r[idxDaya] ?? "").replace(/\.0$/, "").trim() : "",
+        "TARIF": trfVal,
+        "DAYA": dyVal,
         "NOMOR GARDU": garduRaw,
         "NOTIANG": idxTiang >= 0 ? String(r[idxTiang] ?? "").trim() : "",
         "MEREKKWH": idxMerek >= 0 ? String(r[idxMerek] ?? "").trim() : "",
@@ -1387,7 +1583,7 @@ async function prosesUpdateMasterDil() {
   const statusEl = document.getElementById("statusProsesModal");
 
   if (!cacheFileBuffer.master_dil && fileEl.files.length === 0) {
-    statusEl.innerHTML = `<span class="text-danger">⚠️ Pilih file Excel/CSV terlebih dahulu!</span>`;
+    statusEl.innerHTML = `<span class="text-danger">⚠️ Pilih file Excel/CSV/PDF terlebih dahulu!</span>`;
     return;
   }
 
@@ -1400,22 +1596,20 @@ async function prosesUpdateMasterDil() {
       dataBuf = await file.arrayBuffer();
     }
 
-    statusEl.innerHTML = `<span class="text-primary">⏳ Membaca file <b>${fileName}</b> (Mohon tunggu)...</span>`;
-    await new Promise(r => setTimeout(r, 100));
-
-    const wb = XLSX.read(dataBuf, { raw: true });
-    const sheet = wb.Sheets[wb.SheetNames[0]];
-    const rows = XLSX.utils.sheet_to_json(sheet, { header: 1, defval: "" });
-
-    if (rows.length < 1) {
-      statusEl.innerHTML = `<span class="text-danger">⚠️ File kosong!</span>`;
-      return;
+    let rowsDil = [];
+    if (fileName.toLowerCase().endsWith(".pdf")) {
+      rowsDil = await ekstrakBarisDariFilePdf(dataBuf, statusEl);
+    } else {
+      statusEl.innerHTML = `<span class="text-primary">⏳ Membaca file <b>${fileName}</b> (Mohon tunggu)...</span>`;
+      await new Promise(r => setTimeout(r, 100));
+      const wb = XLSX.read(dataBuf, { raw: true });
+      const sheet = wb.Sheets[wb.SheetNames[0]];
+      const rows = XLSX.utils.sheet_to_json(sheet, { header: 1, defval: "" });
+      rowsDil = ekstrakBarisMasterFleksibel(rows);
     }
 
-    const rowsDil = ekstrakBarisMasterFleksibel(rows);
-
     if (rowsDil.length === 0) {
-      statusEl.innerHTML = `<span class="text-danger">⚠️ Tidak ditemukan kolom IDPEL yang valid di dalam file.</span>`;
+      statusEl.innerHTML = `<span class="text-danger">⚠️️ Tidak ditemukan kolom IDPEL yang valid di dalam file.</span>`;
       return;
     }
 
@@ -1441,7 +1635,7 @@ async function prosesUpdateMasterDil() {
   }
 }
 
-// FUNGSI PINTAR UPDATE FLEKSIBEL (NAMA / ALAMAT / GARDU / TIANG / NO KWH / KDDK / SEMUA)
+// FUNGSI PINTAR UPDATE FLEKSIBEL (MENDUKUNG FILE .PDF LANGSUNG, .XLSX ANTI-GESER, ATAU COPAS)
 async function prosesUpdateMasterPb() {
   const fileEl = document.getElementById("fileMasterPb");
   const textVal = document.getElementById("textCopasPb").value.trim();
@@ -1452,34 +1646,45 @@ async function prosesUpdateMasterPb() {
 
   try {
     if (fileEl.files.length > 0) {
-      statusEl.innerHTML = `<span class="text-primary">⏳ Membaca file Excel/CSV...</span>`;
-      await new Promise(r => setTimeout(r, 80));
       const file = fileEl.files[0];
       const dataBuf = await file.arrayBuffer();
-      const wb = XLSX.read(dataBuf, { raw: true });
-      const sheet = wb.Sheets[wb.SheetNames[0]];
-      const rows = XLSX.utils.sheet_to_json(sheet, { header: 1, defval: "" });
 
-      if (rows.length > 0) {
-        rowsPb = ekstrakBarisMasterFleksibel(rows);
+      if (file.name.toLowerCase().endsWith(".pdf")) {
+        rowsPb = await ekstrakBarisDariFilePdf(dataBuf, statusEl);
+      } else {
+        statusEl.innerHTML = `<span class="text-primary">⏳ Membaca & memindai pola anti-geser dari file <b>${file.name}</b>...</span>`;
+        await new Promise(r => setTimeout(r, 80));
+        const wb = XLSX.read(dataBuf, { raw: true });
+        const sheet = wb.Sheets[wb.SheetNames[0]];
+        const rows = XLSX.utils.sheet_to_json(sheet, { header: 1, defval: "" });
+        if (rows.length > 0) {
+          rowsPb = ekstrakBarisMasterFleksibel(rows);
+        }
       }
     } else if (textVal !== "") {
       const lines = textVal.split(/\r?\n/).filter(l => l.trim() !== "");
       const matrix = lines.map(l => l.split("\t"));
 
-      // Cek apakah baris pertama memiliki judul kolom (Header) seperti IDPEL, GARDU, NOMORKWH, dll.
       const firstRowUpper = matrix[0].map(c => String(c || "").trim().toUpperCase().replace(/[_-]/g, " "));
       const hasHeader = firstRowUpper.includes("IDPEL") || firstRowUpper.includes("ID PELANGGAN") || firstRowUpper.includes("ID PEL");
 
       if (modeCopas === "auto" && hasHeader) {
-        // Jika user ikut meng-copy baris judul kolom dari Excel, otomatis baca semua kolom sesuai judulnya!
         rowsPb = ekstrakBarisMasterFleksibel(matrix);
       } else {
-        // Jika user hanya copy-paste isinya saja tanpa baris judul
         const startIdx = hasHeader ? 1 : 0;
         for (let i = startIdx; i < matrix.length; i++) {
           const cols = matrix[i];
           if (cols.length < 2) continue;
+
+          // Jika user copas banyak kolom sekaligus (misal 1 baris penuh dari laporan tagihan), gunakan pemindai pola anti-geser
+          if (modeCopas === "auto" && cols.length >= 6) {
+            const pindai = pindaiSatuBarisAntiGeser(cols);
+            if (pindai && pindai["IDPEL"]) {
+              rowsPb.push(pindai);
+              continue;
+            }
+          }
+
           const idpel = String(cols[0] || "").replace(/\.0$/, "").replace(/[^0-9]/g, "").trim();
           if (idpel.length < 10) continue;
 
@@ -1506,7 +1711,6 @@ async function prosesUpdateMasterPb() {
           } else if (modeCopas === "kddk") {
             item["KDDK"] = col1;
           } else {
-            // Mode Auto tanpa header: deteksi cerdas dari bentuk teksnya
             if (cols.length >= 3) {
               item["NAMA"] = col1;
               item["ALAMAT"] = (col2.toUpperCase() === col1.toUpperCase()) ? "" : col2;
@@ -1530,7 +1734,7 @@ async function prosesUpdateMasterPb() {
         }
       }
     } else {
-      statusEl.innerHTML = `<span class="text-danger">⚠️ Pilih file Excel atau Paste kolom terlebih dahulu!</span>`;
+      statusEl.innerHTML = `<span class="text-danger">⚠️ Pilih file (.pdf / .xlsx) atau Paste kolom terlebih dahulu!</span>`;
       return;
     }
 
