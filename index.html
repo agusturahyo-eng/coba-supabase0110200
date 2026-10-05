@@ -156,8 +156,8 @@ tr.clickable:hover td { filter: brightness(0.92); }
               <label class="form-label fw-bold text-primary mb-1">2. Pilihan Data Invoice yang Dicetak:</label>
               <select id="selectSumberInvoiceCetak" class="form-select form-select-sm fw-semibold" onchange="terapkanPerubahanOpsiDariModalCetak()">
                 <option value="invoice_saja">Hanya Berdasarkan Invoice Bulan Lalu (+ Nunggak 2 & 3)</option>
-                <option value="tambah_nunggak_21">Invoice Lalu + Nunggak L1 Lalu (Hanya yang Lunas Tgl 21 Saja)</option>
-                <option value="tambah_nunggak">Invoice Lalu + Semua Pelanggan Nunggak L1 Bulan Lalu (Tgl 21-31)</option>
+                <option value="tambah_nunggak_21">Invoice Lalu (+ Nunggak 2 & 3) + Nunggak L1 Lalu (Hanya Lunas Tgl 21 Saja)</option>
+                <option value="tambah_nunggak">Invoice Lalu (+ Nunggak 2 & 3) + Semua Nunggak L1 Lalu (Tgl 21-31)</option>
               </select>
             </div>
             <div class="d-flex justify-content-between align-items-center flex-wrap gap-1">
@@ -324,7 +324,7 @@ tr.clickable:hover td { filter: brightness(0.92); }
           <div class="tab-pane fade" id="pane-invoice">
             <div class="d-flex justify-content-between align-items-center alert alert-primary py-2 small mb-2 flex-wrap gap-2">
               <div>
-                <b>Aturan Per Petugas:</b><br>
+                <b>Aturan Per Petugas (Nunggak L2 & L3 selalu otomatis masuk):</b><br>
                 • <b>Saklar Centang:</b> Nyalakan jika petugas minta ditambah <b>Nunggak L1 Lalu</b>.<br>
                 • <b>L1 s/d:</b> Isi <code>21</code> jika hanya minta L1 yang lunas Tgl 21 saja, atau isi <code>31</code> untuk semua L1 lalu.<br>
                 • <b>Brgkt:</b> Tanggal berangkat (Invoice lalu yg lunas sebelum tgl ini otomatis dihapus).<br>
@@ -565,7 +565,6 @@ function getDayFromTgl(tglStr) {
 
 // ============================================================================
 // PEMINDAI BARIS PINTAR ANTI-GESER (UNTUK PDF & EXCEL HASIL CONVERT PDF)
-// Mengenali IDPEL, Nama, Tarif, Daya, Gardu, Alamat, KDDK, Lembar, RpTag, & RpBK!
 // ============================================================================
 const REGEX_TARIF_PLN = /^(R1|R1M|R1MT|R1T|R2|R2T|R3|R3T|B1|B1T|B2|B2T|B3|S1|S2|S2T|S3|I1|I1T|I2|I2T|I3|P1|P1T|P2|P3|P3T|L|C|T)$/i;
 const SET_DAYA_PLN = new Set([250, 450, 900, 1300, 2200, 3500, 4400, 5500, 6600, 7700, 10600, 11000, 13200, 16500, 23000, 33000, 41500, 53000, 66000, 82500, 105000, 131000, 147000, 164000, 197000, 200000, 233000, 240000, 279000, 329000, 345000, 414000, 555000, 690000, 865000, 1110000, 1385000, 1730000]);
@@ -578,7 +577,6 @@ function pindaiSatuBarisAntiGeser(selArray) {
   });
   if (tokens.length < 2) return null;
 
-  // 1. Cari posisi Jangkar IDPEL (12 digit angka diawali 52 atau 11-12 digit angka)
   let idxIdpel = -1, idpelVal = "";
   for (let i = 0; i < Math.min(6, tokens.length); i++) {
     const cleanNum = tokens[i].replace(/[^0-9]/g, "");
@@ -590,7 +588,6 @@ function pindaiSatuBarisAntiGeser(selArray) {
   }
   if (idxIdpel === -1) return null;
 
-  // 2. Cari posisi Jangkar TARIF & DAYA setelah IDPEL
   let idxTarif = -1, tarifVal = "", dayaVal = "";
   for (let i = idxIdpel + 1; i < Math.min(idxIdpel + 6, tokens.length); i++) {
     const tClean = tokens[i].toUpperCase().replace(/\s+/g, "");
@@ -614,7 +611,6 @@ function pindaiSatuBarisAntiGeser(selArray) {
     }
   }
 
-  // Nama adalah teks di antara IDPEL dan TARIF
   let namaVal = "";
   if (idxTarif > idxIdpel + 1) {
     namaVal = tokens.slice(idxIdpel + 1, idxTarif).join(" ").trim();
@@ -622,7 +618,6 @@ function pindaiSatuBarisAntiGeser(selArray) {
     namaVal = tokens[idxIdpel + 1];
   }
 
-  // 3. Cari posisi Jangkar GARDU ("52405GD..." / "GD..." / "- GD") dan RBM/KDDK ("HBA...")
   let idxGardu = -1, garduVal = "";
   let idxHba = -1, kddkVal = "";
 
@@ -640,7 +635,6 @@ function pindaiSatuBarisAntiGeser(selArray) {
     }
   }
 
-  // 4. Alamat adalah teks di antara GARDU dan RBM (HBA...)
   let alamatVal = "";
   if (idxGardu !== -1 && idxHba !== -1 && idxHba > idxGardu + 1) {
     alamatVal = tokens.slice(idxGardu + 1, idxHba).join(" ").trim();
@@ -655,7 +649,6 @@ function pindaiSatuBarisAntiGeser(selArray) {
     alamatVal = "";
   }
 
-  // 5. Ekstrak LEMBAR, RPTAG, dan RPBK dari deretan token setelah RBM/HBA
   let lembarVal = 1, rptagVal = 0, rpbkVal = 0;
   const startAngka = idxHba !== -1 ? idxHba + 1 : (idxGardu !== -1 ? idxGardu + 2 : idxIdpel + 3);
   if (startAngka < tokens.length) {
@@ -1938,7 +1931,7 @@ async function prosesTambahInvoiceManual() {
   });
 
   if (listIdpel.length === 0) {
-    statusEl.innerHTML = `<span class="text-danger">⚠️️ Tidak ditemukan nomor IDPEL yang valid!</span>`;
+    statusEl.innerHTML = `<span class="text-danger">⚠️ Tidak ditemukan nomor IDPEL yang valid!</span>`;
     return;
   }
 
@@ -2917,6 +2910,7 @@ function createImage(r) {
 }
 
 loadSheet(new Date().getDate() >= 21 ? "lembar1" : "lembar2");
+// === AKHIR DARI SCRIPT LENGKAP (100% UTUH) ===
 </script>
 </body>
 </html>
