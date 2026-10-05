@@ -156,14 +156,21 @@ tr.clickable:hover td { filter: brightness(0.92); }
               <label class="form-label fw-bold text-primary mb-1">2. Pilihan Data Invoice yang Dicetak:</label>
               <select id="selectSumberInvoiceCetak" class="form-select form-select-sm fw-semibold" onchange="terapkanPerubahanOpsiDariModalCetak()">
                 <option value="invoice_saja">Hanya Berdasarkan Invoice Bulan Lalu (+ Nunggak 2 & 3)</option>
-                <option value="tambah_nunggak">Invoice Bulan Lalu + Ditambah Pelanggan Nunggak L1 Bulan Lalu</option>
+                <option value="tambah_nunggak_21">Invoice Lalu + Nunggak L1 Lalu (Hanya yang Lunas Tgl 21 Saja)</option>
+                <option value="tambah_nunggak">Invoice Lalu + Semua Pelanggan Nunggak L1 Bulan Lalu (Tgl 21-31)</option>
               </select>
             </div>
-            <div class="d-flex justify-content-between align-items-center">
-              <label class="fw-bold mb-0 text-dark">3. Sortir Tanggal Berangkat Petugas:</label>
-              <div class="d-flex align-items-center gap-1">
-                <span class="text-muted">Mulai Berangkat Tgl:</span>
-                <input type="number" id="inputTglBerangkatCetak" class="form-control form-control-sm text-center fw-bold" style="width:65px;" min="1" max="31" value="15" onchange="terapkanPerubahanOpsiDariModalCetak()">
+            <div class="d-flex justify-content-between align-items-center flex-wrap gap-1">
+              <label class="fw-bold mb-0 text-dark">3. Sortir Tgl Berangkat & Batas L1:</label>
+              <div class="d-flex align-items-center gap-2">
+                <div class="d-flex align-items-center gap-1">
+                  <span class="text-muted">Berangkat Tgl:</span>
+                  <input type="number" id="inputTglBerangkatCetak" class="form-control form-control-sm text-center fw-bold" style="width:55px;" min="1" max="31" value="15" onchange="terapkanPerubahanOpsiDariModalCetak()">
+                </div>
+                <div class="d-flex align-items-center gap-1" title="Isi 21 jika hanya ingin L1 yang lunas tgl 21 saja, atau 31 untuk semua">
+                  <span class="text-primary fw-semibold">L1 s/d Tgl:</span>
+                  <input type="number" id="inputBatasTglL1Cetak" class="form-control form-control-sm text-center fw-bold border-primary" style="width:55px;" min="21" max="31" value="31" onchange="sinkronDropdownSumberDariBatasL1(); terapkanPerubahanOpsiDariModalCetak()">
+                </div>
               </div>
             </div>
             <div id="statusSortirCetak" class="mt-1 fw-bold text-center"></div>
@@ -313,21 +320,22 @@ tr.clickable:hover td { filter: brightness(0.92); }
             </div>
           </div>
 
-          <!-- TAB 4: PENGATURAN INVOICE TGL 15, BIAYA ADMIN & SORTIR TGL BERANGKAT -->
+          <!-- TAB 4: PENGATURAN INVOICE TGL 15, BATAS TGL L1, BIAYA ADMIN & SORTIR TGL BERANGKAT -->
           <div class="tab-pane fade" id="pane-invoice">
             <div class="d-flex justify-content-between align-items-center alert alert-primary py-2 small mb-2 flex-wrap gap-2">
               <div>
                 <b>Aturan Per Petugas:</b><br>
                 • <b>Saklar Centang:</b> Nyalakan jika petugas minta ditambah <b>Nunggak L1 Lalu</b>.<br>
-                • <b>Tgl:</b> Tanggal berangkat (Invoice lalu yg lunas sebelum tgl ini otomatis dihapus).<br>
-                • <b>Admin Rp:</b> Isi <code>0</code> jika Tanpa Admin, atau isi nominal (misal <code>2500</code> / <code>3000</code>).
+                • <b>L1 s/d:</b> Isi <code>21</code> jika hanya minta L1 yang lunas Tgl 21 saja, atau isi <code>31</code> untuk semua L1 lalu.<br>
+                • <b>Brgkt:</b> Tanggal berangkat (Invoice lalu yg lunas sebelum tgl ini otomatis dihapus).<br>
+                • <b>Adm:</b> Isi <code>0</code> jika Tanpa Admin, atau isi nominal (misal <code>2500</code> / <code>3000</code>).
               </div>
               <button class="btn btn-success btn-sm fw-bold shadow-sm" onclick="bukaModalCetakF4DariAdmin()">
                 🖨️ Buka Menu Cetak F4 (4/Lembar)
               </button>
             </div>
 
-            <div class="mb-3 border rounded p-2 bg-light" style="max-height: 220px; overflow-y: auto;">
+            <div class="mb-3 border rounded p-2 bg-light" style="max-height: 230px; overflow-y: auto;">
               <div id="listPetugasInvoice" class="row g-2 small">Memuat daftar petugas...</div>
             </div>
 
@@ -352,8 +360,8 @@ tr.clickable:hover td { filter: brightness(0.92); }
                 <button class="btn btn-success btn-sm fw-bold w-100" onclick="prosesTambahTunggakanL23Manual()">➕ Simpan L2 & L3 Lalu</button>
               </div>
               <div class="col-md-4">
-                <label class="form-label small fw-bold text-secondary mb-1">3. Nunggak L1 Lalu (Ikut Centang):</label>
-                <textarea id="textIdpelTunggakanLalu" class="form-control form-control-sm mb-1" rows="2" placeholder="Paste IDPEL Nunggak L1 lalu..."></textarea>
+                <label class="form-label small fw-bold text-secondary mb-1">3. Nunggak L1 Lalu (Ikut Centang/Tgl):</label>
+                <textarea id="textIdpelTunggakanLalu" class="form-control form-control-sm mb-1" rows="2" placeholder="Paste IDPEL (atau IDPEL + TGL LUNAS)..."></textarea>
                 <button class="btn btn-secondary btn-sm fw-bold w-100" onclick="prosesTambahTunggakanLaluManual()">➕ Simpan L1 Lalu</button>
               </div>
               <div class="col-md-4">
@@ -763,7 +771,6 @@ async function ambilDataSheetDariSupabase(k, forceRefresh = false) {
   const step = 1000;
   
   while (true) {
-    // Gunakan .order('idpel') agar penarikan per 1000 baris selalu konsisten urutannya dan tidak pernah lompat/dobel
     let query = db.from('data_tunggakan').select(KOLOM_SELECT).order('idpel', { ascending: true }).range(from, from + step - 1);
     
     if (k === 'lembar1') query = query.eq('lembar', 1);
@@ -780,7 +787,6 @@ async function ambilDataSheetDariSupabase(k, forceRefresh = false) {
     from += step;
   }
 
-  // Penyaring Anti-Dobel: pastikan 1 IDPEL hanya pernah muncul 1 kali di memori aplikasi
   const unikMap = new Map();
   fetchedRows.forEach(r => unikMap.set(r.idpel, r));
   fetchedRows = Array.from(unikMap.values());
@@ -961,7 +967,7 @@ function renderPetugas() {
             </div>
           </div>
           <button class="btn btn-outline-primary btn-sm fw-bold text-nowrap" onclick="paksaTampilLembar1=true; loadSheet('lembar1', true)">
-            👁️️ Intip Semua Data Lembar 1
+            👁️ Intip Semua Data Lembar 1
           </button>
         </div>
       </div>`;
@@ -1827,13 +1833,13 @@ async function prosesUpdateMasterPb() {
 }
 
 async function prosesGantiBulan() {
-  if (!confirm("Yakin ingin memulai Bulan Baru?\n\nSistem akan otomatis menyimpan memori pelanggan Invoice (beserta Tanggal Lunasnya), Nunggak 2 & 3, serta Nunggak L1 bulan ini ke tabel pengingat, lalu mengosongkan tabel untuk diisi data bulan baru.")) return;
+  if (!confirm("Yakin ingin memulai Bulan Baru?\n\nSistem akan otomatis menyimpan memori pelanggan Invoice (beserta Tanggal Lunasnya), Nunggak 2 & 3, serta Nunggak L1 bulan ini (beserta Tanggal Lunasnya) ke tabel pengingat, lalu mengosongkan tabel untuk diisi data bulan baru.")) return;
   const statusEl = document.getElementById("statusProsesModal");
   statusEl.innerHTML = `<span class="text-primary">⏳ Menyimpan memori Invoice & mereset tabel...</span>`;
   const { error } = await db.rpc('ganti_bulan_baru');
   if (error) statusEl.innerHTML = `<span class="text-danger">❌ Error: ${error.message}</span>`;
   else {
-    statusEl.innerHTML = `<span class="text-success">✅ Tabel berhasil direset! Memori Invoice (beserta Tanggal Lunas bulan lalu) telah diamankan.</span>`;
+    statusEl.innerHTML = `<span class="text-success">✅ Tabel berhasil direset! Memori Invoice & Tanggal Lunas L1 bulan lalu telah diamankan.</span>`;
     loadSheet(currentSheet, true);
   }
 }
@@ -1848,19 +1854,22 @@ async function muatDaftarPetugasModal() {
   let html = "";
   daftarMasterPetugas.forEach(p => {
     const tglBerangkat = p.tgl_berangkat_invoice || 15;
+    const batasTglL1 = p.batas_tgl_l1_invoice || 31;
     const biayaAdmin = getBiayaAdminPetugas(p.kode);
     html += `
       <div class="col-md-6">
         <div class="d-flex justify-content-between align-items-center bg-white p-2 border rounded gap-1">
           <div class="form-check form-switch mb-0 text-truncate" title="Centang jika ditambah Nunggak L1 Bulan Lalu">
             <input class="form-check-input ms-0 me-1" type="checkbox" id="chk-${p.kode}" ${p.tambah_tunggakan_ke_invoice ? 'checked' : ''} onchange="ubahOpsiInvoicePetugas('${p.kode}')">
-            <label class="form-check-label fw-bold" for="chk-${p.kode}" style="font-size:0.74rem;">${p.kode.toUpperCase()} - ${p.nama_petugas}</label>
+            <label class="form-check-label fw-bold" for="chk-${p.kode}" style="font-size:0.72rem;">${p.kode.toUpperCase()} - ${p.nama_petugas}</label>
           </div>
           <div class="d-flex align-items-center gap-1 flex-shrink-0">
-            <span class="text-muted" style="font-size:0.68rem;" title="Tanggal Berangkat Invoice">Tgl:</span>
-            <input type="number" id="tglb-${p.kode}" class="form-control form-control-sm text-center px-1" style="width:40px; height:24px; font-size:0.72rem;" min="1" max="31" value="${tglBerangkat}" onchange="ubahOpsiInvoicePetugas('${p.kode}')">
-            <span class="text-success fw-bold ms-1" style="font-size:0.68rem;" title="Biaya Admin (Isi 0 jika Tanpa Admin)">Adm:</span>
-            <input type="number" id="admrp-${p.kode}" class="form-control form-control-sm text-center px-1" style="width:58px; height:24px; font-size:0.72rem;" step="500" min="0" value="${biayaAdmin}" onchange="simpanBiayaAdminDariTab4('${p.kode}')">
+            <span class="text-primary fw-bold" style="font-size:0.65rem;" title="Batas Tanggal Lunas L1 Lalu (Isi 21 jika hanya Tgl 21 saja, atau 31 untuk semua)">L1 s/d:</span>
+            <input type="number" id="btl1-${p.kode}" class="form-control form-control-sm text-center px-1 border-primary" style="width:36px; height:24px; font-size:0.70rem;" min="21" max="31" value="${batasTglL1}" onchange="ubahOpsiInvoicePetugas('${p.kode}')">
+            <span class="text-muted ms-1" style="font-size:0.65rem;" title="Tanggal Berangkat Invoice">Brgkt:</span>
+            <input type="number" id="tglb-${p.kode}" class="form-control form-control-sm text-center px-1" style="width:36px; height:24px; font-size:0.70rem;" min="1" max="31" value="${tglBerangkat}" onchange="ubahOpsiInvoicePetugas('${p.kode}')">
+            <span class="text-success fw-bold ms-1" style="font-size:0.65rem;" title="Biaya Admin (Isi 0 jika Tanpa Admin)">Adm:</span>
+            <input type="number" id="admrp-${p.kode}" class="form-control form-control-sm text-center px-1" style="width:52px; height:24px; font-size:0.70rem;" step="500" min="0" value="${biayaAdmin}" onchange="simpanBiayaAdminDariTab4('${p.kode}')">
           </div>
         </div>
       </div>`;
@@ -1882,19 +1891,22 @@ function simpanBiayaAdminDariTab4(kode) {
 async function ubahOpsiInvoicePetugas(kode) {
   const isChecked = document.getElementById(`chk-${kode}`).checked;
   const tglBerangkat = parseInt(document.getElementById(`tglb-${kode}`).value || 15, 10);
+  const batasTglL1 = parseInt(document.getElementById(`btl1-${kode}`).value || 31, 10);
   const statusEl = document.getElementById("statusProsesModal");
 
-  statusEl.innerHTML = `<span class="text-primary">⏳ Menyortir daftar Invoice petugas ${kode.toUpperCase()} (Tgl Berangkat: ${tglBerangkat})...</span>`;
+  statusEl.innerHTML = `<span class="text-primary">⏳ Menyortir daftar Invoice petugas ${kode.toUpperCase()} (Brgkt Tgl ${tglBerangkat}, L1 s/d Tgl ${batasTglL1})...</span>`;
   const { error } = await db.rpc('setel_invoice_petugas', { 
     p_kode_petugas: kode, 
     p_tambah_tunggakan: isChecked,
-    p_tgl_berangkat: tglBerangkat
+    p_tgl_berangkat: tglBerangkat,
+    p_batas_tgl_l1: batasTglL1
   });
 
   if (error) statusEl.innerHTML = `<span class="text-danger">❌ Error: ${error.message}</span>`;
   else {
     delete sheetCache['invoice'];
-    statusEl.innerHTML = `<span class="text-success">✅ Invoice ${kode.toUpperCase()} diperbarui! (Yang bulan lalu lunas sebelum Tgl ${tglBerangkat} otomatis dihapus, Nunggak 2 & 3 tetap masuk semua).</span>`;
+    const ketL1 = !isChecked ? "Tanpa L1 Lalu" : (batasTglL1 === 21 ? "L1 Khusus Lunas Tgl 21 Saja" : (batasTglL1 < 31 ? `L1 Lunas Tgl 21 s/d ${batasTglL1}` : "Semua L1 Lalu"));
+    statusEl.innerHTML = `<span class="text-success">✅ Invoice ${kode.toUpperCase()} diperbarui! (${ketL1}, Berangkat Tgl ${tglBerangkat}).</span>`;
     if (currentSheet === 'invoice') loadSheet('invoice', true);
   }
 }
@@ -1926,7 +1938,7 @@ async function prosesTambahInvoiceManual() {
   });
 
   if (listIdpel.length === 0) {
-    statusEl.innerHTML = `<span class="text-danger">⚠️ Tidak ditemukan nomor IDPEL yang valid!</span>`;
+    statusEl.innerHTML = `<span class="text-danger">⚠️️ Tidak ditemukan nomor IDPEL yang valid!</span>`;
     return;
   }
 
@@ -2094,8 +2106,16 @@ async function gantiPetugasDiModalCetak() {
   if (kode !== "Semua") {
     const { data } = await db.from('master_petugas').select('*').ilike('kode', kode).maybeSingle();
     if (data) {
-      document.getElementById("selectSumberInvoiceCetak").value = data.tambah_tunggakan_ke_invoice ? "tambah_nunggak" : "invoice_saja";
+      const batasL1 = data.batas_tgl_l1_invoice || 31;
       document.getElementById("inputTglBerangkatCetak").value = data.tgl_berangkat_invoice || 15;
+      document.getElementById("inputBatasTglL1Cetak").value = batasL1;
+      if (!data.tambah_tunggakan_ke_invoice) {
+        document.getElementById("selectSumberInvoiceCetak").value = "invoice_saja";
+      } else if (batasL1 === 21) {
+        document.getElementById("selectSumberInvoiceCetak").value = "tambah_nunggak_21";
+      } else {
+        document.getElementById("selectSumberInvoiceCetak").value = "tambah_nunggak";
+      }
     }
     const tersimpanAdmin = getBiayaAdminPetugas(kode);
     pilihCepatAdmin(tersimpanAdmin);
@@ -2104,6 +2124,14 @@ async function gantiPetugasDiModalCetak() {
   }
 
   perbaruiInfoJumlahCetakF4(kode);
+}
+
+function sinkronDropdownSumberDariBatasL1() {
+  const batasL1 = parseInt(document.getElementById("inputBatasTglL1Cetak").value || 31, 10);
+  const selEl = document.getElementById("selectSumberInvoiceCetak");
+  if (selEl.value !== "invoice_saja") {
+    selEl.value = (batasL1 === 21) ? "tambah_nunggak_21" : "tambah_nunggak";
+  }
 }
 
 function perbaruiInfoJumlahCetakF4(kodePetugas) {
@@ -2168,8 +2196,16 @@ function perbaruiPreviewTeksAdmin() {
 async function terapkanPerubahanOpsiDariModalCetak() {
   const kode = document.getElementById("selectPetugasCetakF4").value;
   const opsiSumber = document.getElementById("selectSumberInvoiceCetak").value;
-  const tambahNunggak = (opsiSumber === "tambah_nunggak");
+  const tambahNunggak = (opsiSumber !== "invoice_saja");
+
+  if (opsiSumber === "tambah_nunggak_21") {
+    document.getElementById("inputBatasTglL1Cetak").value = 21;
+  } else if (opsiSumber === "tambah_nunggak" && parseInt(document.getElementById("inputBatasTglL1Cetak").value, 10) === 21) {
+    document.getElementById("inputBatasTglL1Cetak").value = 31;
+  }
+
   const tglBerangkat = parseInt(document.getElementById("inputTglBerangkatCetak").value || 15, 10);
+  const batasTglL1 = parseInt(document.getElementById("inputBatasTglL1Cetak").value || 31, 10);
   const statusEl = document.getElementById("statusSortirCetak");
   const btnDownload = document.getElementById("btnDownloadPdfF4");
 
@@ -2182,14 +2218,16 @@ async function terapkanPerubahanOpsiDariModalCetak() {
         await db.rpc('setel_invoice_petugas', {
           p_kode_petugas: p.kode,
           p_tambah_tunggakan: tambahNunggak,
-          p_tgl_berangkat: tglBerangkat
+          p_tgl_berangkat: tglBerangkat,
+          p_batas_tgl_l1: batasTglL1
         });
       }
     } else {
       const { error } = await db.rpc('setel_invoice_petugas', {
         p_kode_petugas: kode,
         p_tambah_tunggakan: tambahNunggak,
-        p_tgl_berangkat: tglBerangkat
+        p_tgl_berangkat: tglBerangkat,
+        p_batas_tgl_l1: batasTglL1
       });
       if (error) throw error;
     }
