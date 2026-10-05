@@ -647,14 +647,13 @@ function pindaiSatuBarisAntiGeser(selArray) {
     alamatVal = "";
   }
 
-  // 5. Ekstrak LEMBAR, RPTAG, dan RPBK dari deretan token setelah RBM/HBA (khusus untuk Input Saldo Awal via PDF)
+  // 5. Ekstrak LEMBAR, RPTAG, dan RPBK dari deretan token setelah RBM/HBA
   let lembarVal = 1, rptagVal = 0, rpbkVal = 0;
   const startAngka = idxHba !== -1 ? idxHba + 1 : (idxGardu !== -1 ? idxGardu + 2 : idxIdpel + 3);
   if (startAngka < tokens.length) {
     const tailNums = [];
     for (let i = startAngka; i < tokens.length; i++) {
       const rawT = tokens[i].trim();
-      // Abaikan token yang jelas bukan angka rupiah/lembar (misal kode pemda panjang > 10 digit atau teks huruf)
       if (/^[0-9.,-]+$/.test(rawT)) {
         const n = parseIDR(rawT);
         if (!isNaN(n) && n >= 0 && String(n).length <= 10) {
@@ -663,7 +662,6 @@ function pindaiSatuBarisAntiGeser(selArray) {
       }
     }
 
-    // Cari angka lembar (biasanya angka kecil 1 s/d 12 setelah Kode Pemda)
     for (let i = 0; i < Math.min(3, tailNums.length); i++) {
       if (tailNums[i] >= 1 && tailNums[i] <= 12) {
         lembarVal = tailNums[i];
@@ -671,18 +669,15 @@ function pindaiSatuBarisAntiGeser(selArray) {
       }
     }
 
-    // Cari pasangan RPTAG dan RPBK di ujung kanan baris
     if (tailNums.length >= 2) {
-      const nLast1 = tailNums[tailNums.length - 1]; // Paling kanan
-      const nLast2 = tailNums[tailNums.length - 2]; // Kedua dari kanan
+      const nLast1 = tailNums[tailNums.length - 1];
+      const nLast2 = tailNums[tailNums.length - 2];
       const nLast3 = tailNums.length >= 3 ? tailNums[tailNums.length - 3] : -1;
 
-      // Jika 3 angka terakhir memenuhi rumus: nLast3 (RPTAG) + nLast2 (RPBK) == nLast1 (TOTAL)
       if (nLast3 >= 1000 && (nLast3 + nLast2 === nLast1)) {
         rptagVal = nLast3;
         rpbkVal = nLast2;
       } else if (nLast2 >= 1000) {
-        // Format standar PLN Kolom Z (RPTAG) & Kolom AA (RPBK) di mana 2 kolom paling kanan adalah RPTAG & RPBK
         rptagVal = nLast2;
         rpbkVal = nLast1;
       } else if (nLast1 >= 1000) {
@@ -727,7 +722,6 @@ async function ekstrakBarisDariFilePdf(arrayBuffer, statusEl) {
     const page = await pdf.getPage(pageNum);
     const textContent = await page.getTextContent();
 
-    // Kelompokkan item teks berdasarkan koordinat Y (baris yang sama)
     const barisMap = {};
     textContent.items.forEach(item => {
       const str = (item.str || "").trim();
@@ -737,7 +731,6 @@ async function ekstrakBarisDariFilePdf(arrayBuffer, statusEl) {
       barisMap[yKey].push({ x: item.transform[4], text: str });
     });
 
-    // Urutkan dari atas ke bawah, dan dari kiri ke kanan
     const yKeys = Object.keys(barisMap).map(Number).sort((a, b) => b - a);
     yKeys.forEach(y => {
       const rowItems = barisMap[y].sort((a, b) => a.x - b.x).map(it => it.text);
@@ -751,7 +744,7 @@ async function ekstrakBarisDariFilePdf(arrayBuffer, statusEl) {
 }
 
 // ============================================================================
-// 2. FUNGSI TARIK DATA DARI SUPABASE (HEMAT BANDWIDTH + CACHE MEMORI)
+// 2. FUNGSI TARIK DATA DARI SUPABASE (HEMAT BANDWIDTH + CACHE + ANTI-DOBEL)
 // ============================================================================
 async function ambilDataSheetDariSupabase(k, forceRefresh = false) {
   const tglHariIni = new Date().getDate();
@@ -770,7 +763,8 @@ async function ambilDataSheetDariSupabase(k, forceRefresh = false) {
   const step = 1000;
   
   while (true) {
-    let query = db.from('data_tunggakan').select(KOLOM_SELECT).range(from, from + step - 1);
+    // Gunakan .order('idpel') agar penarikan per 1000 baris selalu konsisten urutannya dan tidak pernah lompat/dobel
+    let query = db.from('data_tunggakan').select(KOLOM_SELECT).order('idpel', { ascending: true }).range(from, from + step - 1);
     
     if (k === 'lembar1') query = query.eq('lembar', 1);
     else if (k === 'lembar2') query = query.eq('lembar', 2);
@@ -785,6 +779,11 @@ async function ambilDataSheetDariSupabase(k, forceRefresh = false) {
     if (data.length < step) break;
     from += step;
   }
+
+  // Penyaring Anti-Dobel: pastikan 1 IDPEL hanya pernah muncul 1 kali di memori aplikasi
+  const unikMap = new Map();
+  fetchedRows.forEach(r => unikMap.set(r.idpel, r));
+  fetchedRows = Array.from(unikMap.values());
 
   if (k === 'lembar1') {
     fetchedRows = fetchedRows.filter(r => {
@@ -962,7 +961,7 @@ function renderPetugas() {
             </div>
           </div>
           <button class="btn btn-outline-primary btn-sm fw-bold text-nowrap" onclick="paksaTampilLembar1=true; loadSheet('lembar1', true)">
-            👁️ Intip Semua Data Lembar 1
+            👁️️ Intip Semua Data Lembar 1
           </button>
         </div>
       </div>`;
@@ -1292,7 +1291,6 @@ async function prosesInputDataAwal() {
         dataBuf = await file.arrayBuffer();
       }
 
-      // JIKA FILE YANG DIUPLOAD DI TAB 3 ADALAH FILE .PDF ASLI PLN:
       if (fileName.toLowerCase().endsWith(".pdf")) {
         const hasilPdf = await ekstrakBarisDariFilePdf(dataBuf, statusEl);
         hasilPdf.forEach(p => {
@@ -1394,7 +1392,6 @@ async function prosesInputDataAwal() {
           let rptagVal = idxRptag >= 0 ? parseIDR(r[idxRptag]) : 0;
           let rpbkVal = idxRpbk >= 0 ? parseIDR(r[idxRpbk]) : 0;
 
-          // Jika baris ini bergeser (misal dari hasil convert PDF), luruskan otomatis dengan Pemindai Pola Anti-Geser!
           if (idpelClean.length < 10 || /52405GD|^HBA/i.test(alamatVal) || (!REGEX_TARIF_PLN.test(tarifVal) && tarifVal !== "")) {
             const hasilPindai = pindaiSatuBarisAntiGeser(r);
             if (hasilPindai && hasilPindai["IDPEL"]) {
@@ -2002,7 +1999,7 @@ async function prosesTambahTunggakanLaluManual() {
       totalMasuk += (data || 0);
     }
     delete sheetCache['invoice'];
-    statusEl.innerHTML = `<span class="text-success">✅ Berhasil! ${idpels.length.toLocaleString("id-ID")} IDPEL disimpan ke memori Tunggakan L1 Bulan Lalu (${totalMasuk.toLocaleString("id-ID")} aktif di Invoice sesuai centang petugas).</span>`;
+    statusEl.innerHTML = `<span class="text-success">✅ Berhasil! ${idpels.length.toLocaleString("id-ID")} IDPEL disimpan ke memori Tunggakan L1 Bulan Lalu (${totalMasuk.toLocaleString("id-ID")} aktif di Invoice).</span>`;
     document.getElementById("textIdpelTunggakanLalu").value = "";
     if (currentSheet === 'invoice') loadSheet('invoice', true);
   } catch (err) {
@@ -2884,4 +2881,4 @@ function createImage(r) {
 loadSheet(new Date().getDate() >= 21 ? "lembar1" : "lembar2");
 </script>
 </body>
-</html>>
+</html>
