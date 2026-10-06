@@ -378,7 +378,7 @@ tr.clickable:hover td { filter: brightness(0.92); }
             <div class="p-2 border border-primary rounded mb-3 bg-light">
               <h6 class="fw-bold text-primary mb-1">A. Update dari File Excel/CSV DIL (Atau File Teknis Sebagian/Lengkap)</h6>
               <div class="small text-muted mb-2">
-                Bisa upload file <b>DIL lengkap</b> maupun file Excel yang hanya berisi <b>sebagian kolom saja</b> (misal hanya <code>IDPEL</code> + <code>NOMOR GARDU</code>, atau <code>NOTIANG</code>, atau <code>NOMORKWH</code>, atau <code>KDDK</code>). Kolom yang tidak ada di file <b>tidak akan menghapus data lama</b> di <code>dataplg3</code>!
+                Bisa upload file <b>DIL lengkap</b> maupun file Excel yang hanya berisi <b>sebagian kolom saja</b> (misal hanya <code>IDPEL</code> + <code>NOMORGARDU</code>, <code>NAMAGARDU</code>, <code>NOTIANG</code>, <code>NOMORKWH</code>, atau <code>KDDK</code>). Kolom yang tidak ada di file <b>tidak akan menghapus data lama</b> di <code>dataplg3</code>!
               </div>
               <input type="file" id="fileMasterDil" class="form-control form-control-sm mb-2" accept=".xlsx, .xls, .csv, .pdf" onchange="siapkanFileKeMemori(this, 'master_dil')">
               <button class="btn btn-primary btn-sm fw-bold w-100" onclick="prosesUpdateMasterDil()">🔄 Proses & Update File ke dataplg3</button>
@@ -386,7 +386,7 @@ tr.clickable:hover td { filter: brightness(0.92); }
 
             <!-- BAGIAN B: UPDATE FLEKSIBEL + BISA UPLOAD PDF LANGSUNG TANPA CONVERT -->
             <div class="p-2 border border-success rounded bg-light">
-              <h6 class="fw-bold text-success mb-1">B. Update Nama, Alamat, Tarif, Daya, Gardu, KWH (Mendukung File <code>.PDF</code> Asli & <code>.XLSX</code> Anti-Geser!)</h6>
+              <h6 class="fw-bold text-success mb-1">B. Update Nama, Alamat, Tarif, Daya, Gardu, Nama Gardu, KWH (Mendukung <code>.PDF</code> & <code>.XLSX</code>)</h6>
               <div class="small text-muted mb-2">
                 ✨ <b>Fitur Anti-Geser Kolom:</b> Anda bisa pilih langsung <b>File <code>.pdf</code> Asli PLN</b> (tanpa perlu convert!) atau <b>File <code>.xlsx</code> hasil convert PDF</b>. Sistem otomatis memindai pola <code>IDPEL</code>, <code>NAMA</code>, <code>TARIF</code>, <code>DAYA</code>, <code>GARDU</code>, dan <code>ALAMAT</code> di setiap baris tanpa takut kolom bergeser!
               </div>
@@ -402,6 +402,7 @@ tr.clickable:hover td { filter: brightness(0.92); }
                   <option value="alamat">📍 IDPEL | ALAMAT SAJA</option>
                   <option value="gardu_tiang">🗼 IDPEL | NOMOR GARDU | NO TIANG</option>
                   <option value="gardu">⚡ IDPEL | NOMOR GARDU SAJA</option>
+                  <option value="nama_gardu">🏷️ IDPEL | NAMA GARDU SAJA</option>
                   <option value="tiang">💈 IDPEL | NO TIANG SAJA</option>
                   <option value="kwh">🔢 IDPEL | NOMOR KWH SAJA</option>
                   <option value="kddk">🧭 IDPEL | KDDK (KOKED) SAJA</option>
@@ -618,7 +619,7 @@ function pindaiSatuBarisAntiGeser(selArray) {
     namaVal = tokens[idxIdpel + 1];
   }
 
-  let idxGardu = -1, garduVal = "";
+  let idxGardu = -1, garduVal = "", namaGarduVal = "";
   let idxHba = -1, kddkVal = "";
 
   const startCariGardu = idxTarif !== -1 ? idxTarif + 1 : idxIdpel + 2;
@@ -626,7 +627,12 @@ function pindaiSatuBarisAntiGeser(selArray) {
     const tk = tokens[i].trim();
     if (idxGardu === -1 && (/52405GD/i.test(tk) || /\bGD\s+K[1-9]/i.test(tk) || /^(GD\d+|HB\d+)/i.test(tk))) {
       idxGardu = i;
-      garduVal = tk;
+      if (tk.includes("-")) {
+        namaGarduVal = tk;
+        garduVal = tk.split("-")[0].trim();
+      } else {
+        garduVal = tk;
+      }
     } else if (idxHba === -1 && /^HBA[A-Z0-9]{3,12}$/i.test(tk.replace(/\s+/g, ""))) {
       idxHba = i;
       const cleanHba = tk.replace(/\s+/g, "").toUpperCase();
@@ -696,6 +702,7 @@ function pindaiSatuBarisAntiGeser(selArray) {
     "TARIF": tarifVal,
     "DAYA": dayaVal,
     "NOMOR GARDU": garduVal,
+    "NAMA GARDU": namaGarduVal,
     "LEMBAR": lembarVal,
     "RPTAG": rptagVal,
     "RPBK": rpbkVal,
@@ -1303,7 +1310,7 @@ async function prosesInputDataAwal() {
             lembar: p["LEMBAR"] || 1,
             rptag: p["RPTAG"] || 0,
             rpbk: p["RPBK"] || 0,
-            gardu: p["NOMOR GARDU"] || ""
+            gardu: p["NAMA GARDU"] || p["NOMOR GARDU"] || ""
           });
         });
       } else {
@@ -1329,7 +1336,7 @@ async function prosesInputDataAwal() {
 
         let headerRowIdx = -1;
         for (let i = 0; i < Math.min(10, rows.length); i++) {
-          const rowStr = rows[i].map(c => String(c || "").trim().toUpperCase());
+          const rowStr = rows[i].map(c => String(c || "").toUpperCase().replace(/[^A-Z0-9]/g, ""));
           if (rowStr.includes("IDPEL") || rowStr.includes("RPTAG") || rowStr.includes("UNITUP")) {
             headerRowIdx = i;
             break;
@@ -1339,25 +1346,26 @@ async function prosesInputDataAwal() {
         let idxIdpel = 2, idxKoked = -1, idxNama = 3, idxAlamat = 4, idxGardu = 7, idxTarif = 8, idxDaya = 9, idxLembar = 14, idxRptag = 25, idxRpbk = 26;
 
         if (headerRowIdx !== -1) {
-          const headers = rows[headerRowIdx].map(h => String(h || "").trim().toUpperCase().replace(/[_-]/g, " "));
+          const headersClean = rows[headerRowIdx].map(h => String(h || "").toUpperCase().replace(/[^A-Z0-9]/g, ""));
           const findCol = (names, fallback) => {
             for (const n of names) {
-              const idx = headers.indexOf(n);
+              const nClean = n.toUpperCase().replace(/[^A-Z0-9]/g, "");
+              const idx = headersClean.indexOf(nClean);
               if (idx !== -1) return idx;
             }
             return fallback;
           };
 
-          idxIdpel  = findCol(["IDPEL", "ID PELANGGAN"], 2);
-          idxKoked  = findCol(["KOKED", "KDDK", "KODE KEDUDUKAN"], -1);
-          idxNama   = findCol(["NAMA", "NAMA PELANGGAN"], 3);
-          idxAlamat = findCol(["ALAMAT", "ALAMAT PELANGGAN", "PNJ", "NAMAPNJ"], -1);
-          idxGardu  = findCol(["GARDU", "NOMOR GARDU", "KODE GARDU"], 7);
+          idxIdpel  = findCol(["IDPEL", "IDPELANGGAN"], 2);
+          idxKoked  = findCol(["KOKED", "KDDK", "KODEKEDUDUKAN"], -1);
+          idxNama   = findCol(["NAMA", "NAMAPELANGGAN"], 3);
+          idxAlamat = findCol(["ALAMAT", "ALAMATPELANGGAN", "PNJ", "NAMAPNJ"], -1);
+          idxGardu  = findCol(["GARDU", "NOMORGARDU", "NAMAGARDU", "KODEGARDU"], 7);
           idxTarif  = findCol(["TARIF", "TARIP", "TRF"], 8);
           idxDaya   = findCol(["DAYA"], 9);
-          idxLembar = findCol(["LEMBAR", "LBR", "JML TUNGGAKAN", "BLN TUNGGAKAN"], 14);
-          idxRptag  = findCol(["RPTAG", "RP TAG", "TAGIHAN", "RP TAGIHAN"], 25);
-          idxRpbk   = findCol(["RPBK", "RP BK", "BK", "DENDA"], 26);
+          idxLembar = findCol(["LEMBAR", "LBR", "JMLTUNGGAKAN", "BLNTUNGGAKAN"], 14);
+          idxRptag  = findCol(["RPTAG", "TAGIHAN", "RPTAGIHAN"], 25);
+          idxRpbk   = findCol(["RPBK", "BK", "DENDA"], 26);
 
           if (idxAlamat === idxNama) idxAlamat = -1;
         } else {
@@ -1397,7 +1405,7 @@ async function prosesInputDataAwal() {
               idpelClean = hasilPindai["IDPEL"];
               if (hasilPindai["NAMA"]) namaVal = hasilPindai["NAMA"];
               if (hasilPindai["ALAMAT"]) alamatVal = hasilPindai["ALAMAT"];
-              if (hasilPindai["NOMOR GARDU"]) garduVal = hasilPindai["NOMOR GARDU"];
+              if (hasilPindai["NAMA GARDU"] || hasilPindai["NOMOR GARDU"]) garduVal = hasilPindai["NAMA GARDU"] || hasilPindai["NOMOR GARDU"];
               if (hasilPindai["TARIF"]) tarifVal = hasilPindai["TARIF"];
               if (hasilPindai["DAYA"]) dayaVal = parseInt(hasilPindai["DAYA"], 10) || 0;
               if (hasilPindai["KDDK"]) kokedVal = hasilPindai["KDDK"];
@@ -1413,7 +1421,7 @@ async function prosesInputDataAwal() {
             if (alamatVal && namaVal && alamatVal.toUpperCase() === namaVal.toUpperCase()) {
               alamatVal = "";
             }
-            if (/^(08|628|\+62)/.test(garduVal) || garduVal.includes("***")) {
+            if (/^(08|628|\+62)/.test(garduVal) || garduVal.includes("*")) {
               garduVal = "";
             }
 
@@ -1524,51 +1532,55 @@ async function prosesInputDataAwal() {
 }
 
 // ============================================================================
-// FUNGSI EKSTRAKSI BARIS EXCEL FLEKSIBEL + PEMINDAI POLA ANTI-GESER (UNTUK TAB 5)
+// FUNGSI EKSTRAKSI BARIS EXCEL FLEKSIBEL (KEBAL SPASI: NOMORGARDU & NAMAGARDU + TOLAK NO HP BERBINTANG)
 // ============================================================================
 function ekstrakBarisMasterFleksibel(rows) {
   let headerRowIdx = -1;
   for (let i = 0; i < Math.min(10, rows.length); i++) {
-    const rStr = rows[i].map(c => String(c || "").trim().toUpperCase().replace(/[_-]/g, " "));
-    if (rStr.includes("IDPEL") || rStr.includes("ID PELANGGAN") || rStr.includes("ID PEL")) {
+    const rStr = rows[i].map(c => String(c || "").toUpperCase().replace(/[^A-Z0-9]/g, ""));
+    if (rStr.includes("IDPEL") || rStr.includes("IDPELANGGAN")) {
       headerRowIdx = i;
       break;
     }
   }
 
   let idxIdpel = 0, idxKddk = -1, idxNama = -1, idxAlamat = -1, idxTarif = -1, idxDaya = -1;
-  let idxGardu = -1, idxTiang = -1, idxMerek = -1, idxNoKwh = -1, idxKoordX = -1, idxKoordY = -1, idxNik = -1, idxHp = -1;
+  let idxGardu = -1, idxNamaGardu = -1, idxTiang = -1, idxMerek = -1, idxNoKwh = -1, idxKoordX = -1, idxKoordY = -1, idxNik = -1, idxHp = -1;
   let isLaporanTagihanPdf = false;
 
   if (headerRowIdx !== -1) {
-    const headers = rows[headerRowIdx].map(h => String(h || "").trim().toUpperCase().replace(/[_-]/g, " "));
-    if (headers.includes("RBM") || headers.includes("SUBKOGOL") || headers.includes("KOGOL") || headers.includes("UNITAP")) {
+    // Normalisasi seluruh judul kolom: hapus spasi, titik, strip, underscore agar "NOMORGARDU" = "NOMOR GARDU"
+    const headersClean = rows[headerRowIdx].map(h => String(h || "").toUpperCase().replace(/[^A-Z0-9]/g, ""));
+    
+    if (headersClean.includes("RBM") || headersClean.includes("SUBKOGOL") || headersClean.includes("KOGOL") || headersClean.includes("UNITAP")) {
       isLaporanTagihanPdf = true;
     }
 
     const findIdx = (keys) => {
       for (const k of keys) {
-        const idx = headers.indexOf(k);
+        const kClean = k.toUpperCase().replace(/[^A-Z0-9]/g, "");
+        const idx = headersClean.indexOf(kClean);
         if (idx !== -1) return idx;
       }
       return -1;
     };
 
-    idxIdpel  = findIdx(["IDPEL", "ID PELANGGAN", "ID PEL"]);
+    idxIdpel     = findIdx(["IDPEL", "IDPELANGGAN"]);
     if (idxIdpel === -1) idxIdpel = 0;
-    idxKddk   = findIdx(["KDDK", "KOKED", "KODE KEDUDUKAN"]);
-    idxNama   = findIdx(["NAMA", "NAMA PELANGGAN"]);
-    idxAlamat = findIdx(["ALAMAT", "ALAMAT PELANGGAN", "NAMAPNJ", "PNJ", "DUSUN", "DESA"]);
-    idxTarif  = findIdx(["TARIF", "TARIP", "TRF"]);
-    idxDaya   = findIdx(["DAYA"]);
-    idxGardu  = findIdx(["NOMOR GARDU", "GARDU", "NOGARDU", "KODE GARDU", "NAMA GARDU"]);
-    idxTiang  = findIdx(["NOTIANG", "NO TIANG", "TIANG", "NOMOR TIANG"]);
-    idxMerek  = findIdx(["MEREKKWH", "MEREK KWH", "MERK KWH", "MERK METER"]);
-    idxNoKwh  = findIdx(["NOMORKWH", "NOMOR KWH", "NO KWH", "NOMOR METER", "NO METER", "NOKWH"]);
-    idxKoordX = findIdx(["KOORDINAT X", "KOORDINATX", "LATITUDE", "X", "LAT"]);
-    idxKoordY = findIdx(["KOORDINAT Y", "KOORDINATY", "LONGITUDE", "Y", "LON", "LONG"]);
-    idxNik    = findIdx(["NOIDENTITAS", "NO IDENTITAS", "NIK", "KTP", "NO KTP"]);
-    idxHp     = findIdx(["NO HP", "NOHP", "TELEPON", "HP", "NO TELP"]);
+    idxKddk      = findIdx(["KDDK", "KOKED", "KODEKEDUDUKAN"]);
+    idxNama      = findIdx(["NAMA", "NAMAPELANGGAN"]);
+    idxAlamat    = findIdx(["ALAMAT", "ALAMATPELANGGAN", "NAMAPNJ", "PNJ", "DUSUN", "DESA"]);
+    idxTarif     = findIdx(["TARIF", "TARIP", "TRF"]);
+    idxDaya      = findIdx(["DAYA"]);
+    idxGardu     = findIdx(["NOMORGARDU", "GARDU", "NOGARDU", "KODEGARDU", "KDGARDU"]);
+    idxNamaGardu = findIdx(["NAMAGARDU", "NMGARDU"]);
+    idxTiang     = findIdx(["NOTIANG", "NOMORTIANG", "TIANG", "KODETIANG"]);
+    idxMerek     = findIdx(["MEREKKWH", "MERKKWH", "MERKMETER", "MEREKMETER"]);
+    idxNoKwh     = findIdx(["NOMORKWH", "NOKWH", "NOMORMETER", "NOMETER", "NOSERI"]);
+    idxKoordX    = findIdx(["KOORDINATX", "LATITUDE", "LAT", "X"]);
+    idxKoordY    = findIdx(["KOORDINATY", "LONGITUDE", "LONG", "LON", "Y"]);
+    idxNik       = findIdx(["NOIDENTITAS", "NIK", "KTP", "NOKTP", "NOMORIDENTITAS"]);
+    idxHp        = findIdx(["NOHP", "NOMORHP", "TELEPON", "HP", "NOTELP", "NOHANDPHONE"]);
   } else {
     const colCount = (rows[0] || []).length;
     if (colCount >= 12) {
@@ -1600,6 +1612,7 @@ function ekstrakBarisMasterFleksibel(rows) {
     let trfVal = idxTarif >= 0 ? String(r[idxTarif] ?? "").trim() : "";
     let dyVal = idxDaya >= 0 ? String(r[idxDaya] ?? "").replace(/\.0$/, "").trim() : "";
     let garduRaw = idxGardu >= 0 ? String(r[idxGardu] ?? "").trim() : "";
+    let namaGarduRaw = idxNamaGardu >= 0 ? String(r[idxNamaGardu] ?? "").trim() : "";
     let hpRaw = idxHp >= 0 ? String(r[idxHp] ?? "").replace(/\.0$/, "").trim() : "";
 
     if (idpel.length < 10 || /52405GD|^HBA/i.test(alVal)) {
@@ -1613,9 +1626,16 @@ function ekstrakBarisMasterFleksibel(rows) {
     if (idpel.length >= 10) {
       if (alVal && nmVal && alVal.toUpperCase() === nmVal.toUpperCase()) alVal = "";
 
-      if (/^(08|628|\+62)/.test(garduRaw) || garduRaw.includes("***")) {
-        if (!hpRaw) hpRaw = garduRaw;
+      // Bersihkan jika gardu terisi nomor HP atau bintang (*)
+      if (/^(08|628|\+62)/.test(garduRaw) || garduRaw.includes("*")) {
         garduRaw = "";
+      }
+      if (/^(08|628|\+62)/.test(namaGarduRaw) || namaGarduRaw.includes("*")) {
+        namaGarduRaw = "";
+      }
+      // Jangan masukkan NO HP jika mengandung bintang (*)
+      if (hpRaw.includes("*")) {
+        hpRaw = "";
       }
 
       hasil.push({
@@ -1626,6 +1646,7 @@ function ekstrakBarisMasterFleksibel(rows) {
         "TARIF": trfVal,
         "DAYA": dyVal,
         "NOMOR GARDU": garduRaw,
+        "NAMA GARDU": namaGarduRaw,
         "NOTIANG": idxTiang >= 0 ? String(r[idxTiang] ?? "").trim() : "",
         "MEREKKWH": idxMerek >= 0 ? String(r[idxMerek] ?? "").trim() : "",
         "NOMORKWH": idxNoKwh >= 0 ? String(r[idxNoKwh] ?? "").replace(/\.0$/, "").trim() : "",
@@ -1726,8 +1747,8 @@ async function prosesUpdateMasterPb() {
       const lines = textVal.split(/\r?\n/).filter(l => l.trim() !== "");
       const matrix = lines.map(l => l.split("\t"));
 
-      const firstRowUpper = matrix[0].map(c => String(c || "").trim().toUpperCase().replace(/[_-]/g, " "));
-      const hasHeader = firstRowUpper.includes("IDPEL") || firstRowUpper.includes("ID PELANGGAN") || firstRowUpper.includes("ID PEL");
+      const firstRowClean = matrix[0].map(c => String(c || "").toUpperCase().replace(/[^A-Z0-9]/g, ""));
+      const hasHeader = firstRowClean.includes("IDPEL") || firstRowClean.includes("IDPELANGGAN");
 
       if (modeCopas === "auto" && hasHeader) {
         rowsPb = ekstrakBarisMasterFleksibel(matrix);
@@ -1764,6 +1785,8 @@ async function prosesUpdateMasterPb() {
             item["NOTIANG"] = col2;
           } else if (modeCopas === "gardu") {
             item["NOMOR GARDU"] = col1;
+          } else if (modeCopas === "nama_gardu") {
+            item["NAMA GARDU"] = col1;
           } else if (modeCopas === "tiang") {
             item["NOTIANG"] = col1;
           } else if (modeCopas === "kwh") {
@@ -1776,7 +1799,8 @@ async function prosesUpdateMasterPb() {
               item["ALAMAT"] = (col2.toUpperCase() === col1.toUpperCase()) ? "" : col2;
             } else {
               if (/^(52405GD|GD\d+|HB\d+)/i.test(col1)) {
-                item["NOMOR GARDU"] = col1;
+                if (col1.includes("-")) item["NAMA GARDU"] = col1;
+                else item["NOMOR GARDU"] = col1;
               } else if (/^(K[1-9][\s-])/i.test(col1)) {
                 item["NOTIANG"] = col1;
               } else if (/^HBA[A-Z0-9]{7,9}$/i.test(col1)) {
